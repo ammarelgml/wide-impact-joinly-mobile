@@ -1,59 +1,71 @@
-import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { errorMessage } from '@/api/messages';
-
-import { Button } from './button';
 import { Icon, type IconName } from './icon';
 import { Text } from './text';
-import { colors, spacing } from './theme';
+import { colors, space } from './theme';
 
-/** Empty screen with one clear next action. */
-export function EmptyState({
+export type StateTone = 'primary' | 'error' | 'success' | 'neutral';
+
+const tones: Record<StateTone, { bg: string; fg: string }> = {
+  primary: { bg: colors.primarySoft, fg: colors.onPrimarySoft },
+  error: { bg: colors.dangerSoft, fg: colors.danger },
+  success: { bg: colors.successSoft, fg: colors.success },
+  neutral: { bg: colors.surface2, fg: colors.ink2 },
+};
+
+/** Tinted icon tile used by empty, error and success states. */
+export function StateIcon({
   icon,
-  title,
-  message,
-  children,
+  tone = 'primary',
+  size = 72,
 }: {
   icon: IconName;
-  title: string;
-  message?: string;
-  children?: ReactNode;
+  tone?: StateTone;
+  size?: 48 | 56 | 72 | 96;
 }) {
+  const t = tones[tone];
+  const corner = size === 96 ? 32 : size === 72 ? 24 : size === 56 ? 18 : 14;
+  const iconSize = size === 96 ? 48 : size === 72 ? 32 : size === 56 ? 28 : 24;
   return (
-    <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <Icon name={icon} size={32} color={colors.primary} />
-      </View>
-      <Text variant="heading" align="center" accessibilityRole="header">
-        {title}
-      </Text>
-      {message ? (
-        <Text tone="muted" align="center">
-          {message}
-        </Text>
-      ) : null}
-      {children ? <View style={styles.actions}>{children}</View> : null}
+    <View
+      style={[
+        styles.tile,
+        { width: size, height: size, borderRadius: corner, backgroundColor: t.bg },
+      ]}
+    >
+      <Icon name={icon} size={iconSize} color={t.fg} />
     </View>
   );
 }
 
-/** Full-area error with a retry, for when there is no cached data to show. */
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+/**
+ * Centred empty, error or "gone" state: icon, title, one line of help. The next action goes in the
+ * screen's bottom area, in thumb reach.
+ */
+export function EmptyState({
+  icon,
+  tone = 'primary',
+  title,
+  message,
+  testID,
+}: {
+  icon: IconName;
+  tone?: StateTone;
+  title: string;
+  message?: string;
+  testID?: string;
+}) {
   return (
-    <View style={styles.container}>
-      <View style={[styles.iconCircle, { backgroundColor: colors.dangerSoft }]}>
-        <Icon name="cloud-offline" size={32} color={colors.danger} />
-      </View>
-      <Text variant="heading" align="center" accessibilityRole="header">
-        Couldn&apos;t load this
+    <View style={styles.container} testID={testID}>
+      <StateIcon icon={icon} tone={tone} />
+      <Text variant="title" align="center" accessibilityRole="header">
+        {title}
       </Text>
-      <Text tone="muted" align="center">
-        {errorMessage(error)}
-      </Text>
-      <View style={styles.actions}>
-        <Button label="Try again" variant="secondary" icon="refresh" onPress={onRetry} />
-      </View>
+      {message ? (
+        <Text variant="body2" align="center" style={styles.message}>
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -63,17 +75,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.md,
+    paddingHorizontal: space[4],
+    gap: space[4],
   },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  actions: { alignSelf: 'stretch', gap: spacing.md, marginTop: spacing.md },
+  tile: { alignItems: 'center', justifyContent: 'center' },
+  message: { maxWidth: 280 },
 });

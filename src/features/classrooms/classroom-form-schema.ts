@@ -11,7 +11,7 @@ export const classroomFormSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, 'Give the classroom a name.')
+    .min(1, 'Add a class name to continue.')
     .max(NAME_MAX, `Use ${NAME_MAX} characters or fewer.`),
   description: z
     .string()

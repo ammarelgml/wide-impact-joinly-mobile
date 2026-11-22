@@ -1,209 +1,389 @@
+import * as Brightness from 'expo-brightness';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Platform, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Classroom } from '@/api/client';
 import { errorMessage } from '@/api/messages';
-import { formatJoinCode, formatTimeLeft } from '@/lib/format';
+import { formatJoinCode } from '@/lib/format';
+import { useIsOffline } from '@/lib/network';
 import { useNow } from '@/lib/use-now';
 import {
   Banner,
   Button,
-  ConfirmDialog,
-  ErrorState,
+  CodeText,
+  ConfirmSheet,
+  EmptyState,
   Icon,
   IconButton,
-  OfflineBanner,
+  OfflineStrip,
+  Screen,
   SkeletonBlock,
+  Spinner,
+  StatusPill,
+  SwitchRow,
   Text,
   colors,
+  font,
+  qr,
   radius,
-  spacing,
+  size,
+  space,
 } from '@/ui';
 
-import { useClassroom, useRegenerateCode, useUpdateClassroom } from './api';
-import { REGENERATE_MESSAGE, inviteState } from './join-code-status';
+import { INVITE_POLL_MS, useClassroom, useRegenerateCode, useUpdateClassroom } from './api';
+import { ExpiryLine } from './invite-card';
+import { REGENERATE_MESSAGE, REGENERATE_TITLE, inviteState } from './join-code-status';
+import { LiveCounter } from './live-counter';
 
-/** T4: full-screen invite, readable from the back of a classroom. Stays awake; the count updates live. */
-export function InviteScreen() {
+/**
+ * While the invite is on screen: keep it awake, raise brightness to full so the QR reads from the
+ * back of a room, and allow landscape. All three are restored on exit.
+ */
+function usePresentationMode() {
   useKeepAwake();
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let previous: number | null = null;
+    void Brightness.getBrightnessAsync()
+      .then((value) => {
+        previous = value;
+        return Brightness.setBrightnessAsync(1);
+      })
+      .catch(() => {});
+    void ScreenOrientation.unlockAsync().catch(() => {});
+    return () => {
+      // Android: hand the window back to the system setting. iOS changed the screen itself, so put it back.
+      if (Platform.OS === 'android') void Brightness.restoreSystemBrightnessAsync().catch(() => {});
+      else if (previous !== null) void Brightness.setBrightnessAsync(previous).catch(() => {});
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(
+        () => {},
+      );
+    };
+  }, []);
+}
+
+/** T4: full-screen invite, readable from across a classroom. The counter updates within 2 s. */
+export function InviteScreen() {
+  usePresentationMode();
   const { id } = useLocalSearchParams<{ id: string }>();
   const focused = useIsFocused();
-  const query = useClassroom(id, { poll: focused });
+  const query = useClassroom(id, { pollMs: focused && INVITE_POLL_MS });
 
+  if (query.data) return <InviteContent classroom={query.data} />;
+
+  const appBar = { title: 'Invite students', leading: 'close' as const };
+  if (query.isError) {
+    return (
+      <Screen
+        appBar={appBar}
+        surface
+        center
+        footer={<Button label="Try again" icon="refresh" onPress={() => void query.refetch()} />}
+      >
+        <EmptyState
+          icon="cloud-offline-outline"
+          tone="error"
+          title="Couldn't load this invite"
+          message="Check your connection and try again."
+        />
+      </Screen>
+    );
+  }
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.topBar}>
-        <IconButton icon="close" label="Close invite" onPress={() => router.back()} />
-      </View>
-      <OfflineBanner />
-      {query.data ? (
-        <InviteContent classroom={query.data} />
-      ) : query.isError ? (
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-      ) : (
-        <View style={styles.center}>
-          <SkeletonBlock width={280} height={280} />
-        </View>
-      )}
-    </SafeAreaView>
+    <Screen appBar={appBar} surface contentStyle={styles.portrait}>
+      <SkeletonBlock width="60%" height={28} />
+      <SkeletonBlock width={size.qrInvite} height={size.qrInvite} rounded={radius.lg} />
+      <SkeletonBlock width={200} height={44} rounded={radius.md} />
+    </Screen>
   );
 }
 
-function InviteContent({ classroom }: { classroom: Classroom }) {
-  const now = useNow(15_000);
-  const { width } = useWindowDimensions();
-  const regenerate = useRegenerateCode(classroom.id);
-  const update = useUpdateClassroom(classroom.id);
-  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
-  const state = inviteState(classroom, now);
-  const qrSize = Math.min(width - spacing.xxxl * 2, 320);
-
-  const count = (
-    <View style={styles.count} accessibilityLiveRegion="polite">
-      <Icon name="people" color={colors.success} />
-      <Text testID="live-count" variant="heading" style={{ color: colors.success }}>
-        {classroom.studentCount} {classroom.studentCount === 1 ? 'student' : 'students'} joined
-      </Text>
-    </View>
-  );
-
+function QrPlate({ value, label, plate }: { value: string; label: string; plate: number }) {
   return (
-    <View style={styles.content}>
-      <Text variant="title" align="center" numberOfLines={2}>
-        {classroom.name}
-      </Text>
-
-      {state.kind === 'live' ? (
-        <>
-          <View
-            style={styles.qr}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel="QR code to join this class"
-          >
-            <QRCode value={state.joinCode.joinUrl} size={qrSize} ecl="M" quietZone={8} />
-          </View>
-          <View style={styles.codeBlock}>
-            <Text variant="caption" tone="muted" align="center">
-              Or enter this code in Joinly
-            </Text>
-            <Text
-              testID="invite-code"
-              variant="code"
-              align="center"
-              accessibilityLabel={`Code ${state.joinCode.code.split('').join(' ')}`}
-            >
-              {formatJoinCode(state.joinCode.code)}
-            </Text>
-            <Text variant="caption" tone="muted" align="center">
-              Expires in {formatTimeLeft(state.joinCode.expiresAt, now)}
-            </Text>
-          </View>
-          {count}
-          {regenerate.isError ? (
-            <Banner tone="error" message={errorMessage(regenerate.error)} />
-          ) : null}
-          <View style={styles.actions}>
-            <Button
-              label="Share"
-              icon="share-outline"
-              variant="secondary"
-              style={styles.action}
-              onPress={() =>
-                void Share.share({
-                  message: `Join "${classroom.name}" on Joinly with code ${formatJoinCode(state.joinCode.code)}, or open ${state.joinCode.joinUrl}`,
-                })
-              }
-            />
-            <Button
-              testID="invite-regenerate"
-              label="New code"
-              icon="refresh"
-              variant="secondary"
-              style={styles.action}
-              onPress={() => setConfirmRegenerate(true)}
-            />
-          </View>
-        </>
-      ) : state.kind === 'expired' ? (
-        <View style={styles.notice}>
-          <Icon name="time" size={48} color={colors.warning} />
-          <Text variant="heading" align="center">
-            This code has expired
-          </Text>
-          <Text tone="muted" align="center">
-            Make a new code to keep inviting students.
-          </Text>
-          {count}
-          {regenerate.isError ? (
-            <Banner tone="error" message={errorMessage(regenerate.error)} />
-          ) : null}
-          <Button
-            label="Make a new code"
-            icon="refresh"
-            loading={regenerate.isPending}
-            onPress={() => regenerate.mutate()}
-            style={styles.wide}
-          />
-        </View>
-      ) : (
-        <View style={styles.notice}>
-          <Icon name="lock-closed" size={48} color={colors.textMuted} />
-          <Text variant="heading" align="center">
-            Joining is off
-          </Text>
-          <Text tone="muted" align="center">
-            The QR code is hidden while new students can&apos;t join.
-          </Text>
-          {count}
-          {update.isError ? <Banner tone="error" message={errorMessage(update.error)} /> : null}
-          <Button
-            label="Turn on joining"
-            icon="lock-open"
-            loading={update.isPending}
-            onPress={() => update.mutate({ joiningOpen: true })}
-            style={styles.wide}
-          />
-        </View>
-      )}
-
-      <ConfirmDialog
-        visible={confirmRegenerate}
-        title="Make a new code?"
-        message={REGENERATE_MESSAGE}
-        confirmLabel="Make new code"
-        onCancel={() => setConfirmRegenerate(false)}
-        onConfirm={async () => {
-          await regenerate.mutateAsync();
-          setConfirmRegenerate(false);
-        }}
+    <View
+      style={[styles.qr, { width: plate, height: plate }]}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={label}
+      testID="invite-qr"
+    >
+      <QRCode
+        value={value}
+        size={plate - 2 * qr.quietZone}
+        ecl="M"
+        color={qr.module}
+        backgroundColor={qr.plate}
       />
     </View>
   );
 }
 
+function QrOff({ plate, children }: { plate: number; children: ReactNode }) {
+  return (
+    <View style={[styles.qrOff, { width: plate, height: plate }]} accessibilityRole="text">
+      {children}
+    </View>
+  );
+}
+
+function InviteContent({ classroom }: { classroom: Classroom }) {
+  const now = useNow(15_000);
+  const offline = useIsOffline();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  const regenerate = useRegenerateCode(classroom.id);
+  const update = useUpdateClassroom(classroom.id);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const state = inviteState(classroom, now);
+  // The old code is dead the moment a new one is requested, so the QR goes before the reply comes.
+  const regenerating = regenerate.isPending;
+
+  const qrLabel = `QR code to join ${classroom.name}`;
+  const share = (code: string, url: string) =>
+    void Share.share({
+      message: `Join "${classroom.name}" on Joinly with code ${formatJoinCode(code)}, or open ${url}`,
+    });
+
+  const joiningSwitch = (bare: boolean) => (
+    <SwitchRow
+      testID="invite-joining-switch"
+      bare={bare}
+      title="Joining open"
+      subtitle={bare ? undefined : 'Students can join with the code or QR'}
+      value={classroom.joiningOpen}
+      disabled={offline || regenerating}
+      onValueChange={(joiningOpen) => update.mutate({ joiningOpen })}
+    />
+  );
+
+  const actions =
+    state.kind === 'live' ? (
+      <View style={styles.actionRow}>
+        <Button
+          testID="invite-share"
+          label="Share"
+          icon="share-social-outline"
+          style={styles.grow}
+          disabled={regenerating}
+          onPress={() => share(state.joinCode.code, state.joinCode.joinUrl)}
+        />
+        <Button
+          testID="invite-regenerate"
+          label="Regenerate"
+          icon="refresh"
+          variant="secondary"
+          fullWidth={false}
+          disabled={regenerating || offline}
+          onPress={() => setConfirmRegenerate(true)}
+        />
+      </View>
+    ) : state.kind === 'expired' ? (
+      <Button
+        testID="invite-regenerate"
+        label="Regenerate code"
+        icon="refresh"
+        busy={regenerating}
+        busyLabel="Regenerating…"
+        disabled={offline}
+        onPress={() => setConfirmRegenerate(true)}
+      />
+    ) : (
+      <Button
+        testID="invite-turn-on"
+        label="Turn on joining"
+        busy={update.isPending}
+        busyLabel="Turning on…"
+        disabled={offline}
+        onPress={() => update.mutate({ joiningOpen: true })}
+      />
+    );
+
+  const errors = (
+    <>
+      {regenerate.isError && !confirmRegenerate ? (
+        <Banner tone="error" message={errorMessage(regenerate.error)} />
+      ) : null}
+      {update.isError ? <Banner tone="error" message={errorMessage(update.error)} /> : null}
+    </>
+  );
+
+  const confirm = (
+    <ConfirmSheet
+      visible={confirmRegenerate}
+      title={REGENERATE_TITLE}
+      message={REGENERATE_MESSAGE}
+      confirmLabel="Regenerate code"
+      busyLabel="Regenerating…"
+      confirmKind="primary"
+      onCancel={() => setConfirmRegenerate(false)}
+      onConfirm={async () => {
+        // Close first, so the screen itself shows "Making a new code…" while it is made.
+        setConfirmRegenerate(false);
+        await regenerate.mutateAsync().catch(() => {});
+      }}
+    />
+  );
+
+  if (landscape && state.kind === 'live') {
+    const plate = Math.min(296, height - insets.top - insets.bottom - 2 * space[5]);
+    return (
+      <View
+        style={[
+          styles.landscape,
+          {
+            paddingTop: insets.top + space[5],
+            paddingBottom: insets.bottom + space[5],
+            paddingStart: insets.left + 40,
+            paddingEnd: insets.right + space[5],
+          },
+        ]}
+      >
+        {regenerating ? (
+          <QrOff plate={plate}>
+            <Spinner large />
+            <Text style={styles.qrOffText}>Making a new code…</Text>
+          </QrOff>
+        ) : (
+          <QrPlate value={state.joinCode.joinUrl} label={qrLabel} plate={plate} />
+        )}
+        <View style={styles.side}>
+          <View style={styles.row}>
+            <Text variant="headline" numberOfLines={1} style={styles.grow}>
+              {classroom.name}
+            </Text>
+            <IconButton icon="close" label="Close" onPress={() => router.back()} />
+          </View>
+          <OfflineStrip message="You're offline. The count may be out of date." />
+          {regenerating ? null : (
+            <CodeText code={state.joinCode.code} size="XL" testID="invite-code" />
+          )}
+          <View style={[styles.row, styles.wrap]}>
+            <LiveCounter count={classroom.studentCount} live={!regenerating} />
+            {regenerating ? null : <ExpiryLine expiresAt={state.joinCode.expiresAt} now={now} />}
+          </View>
+          {errors}
+          <View style={styles.grow} />
+          {joiningSwitch(true)}
+          {actions}
+        </View>
+        {confirm}
+      </View>
+    );
+  }
+
+  const plate = Math.min(size.qrInvite, width - 2 * space[4]);
+  return (
+    <Screen
+      appBar={{ title: 'Invite students', leading: 'close' }}
+      surface
+      offline="You're offline. The count may be out of date."
+      contentStyle={styles.portrait}
+      footer={
+        <>
+          {state.kind === 'live' ? joiningSwitch(false) : null}
+          {actions}
+        </>
+      }
+    >
+      <Text variant="headline" numberOfLines={1} style={styles.name}>
+        {classroom.name}
+      </Text>
+
+      {state.kind === 'live' && regenerating ? (
+        <>
+          <QrOff plate={plate}>
+            <Spinner large />
+            <Text style={styles.qrOffText} accessibilityLiveRegion="polite">
+              Making a new code…
+            </Text>
+          </QrOff>
+          <View style={styles.codeSlot}>
+            <SkeletonBlock width={200} height={44} rounded={radius.md} />
+          </View>
+          <Text variant="caption">The old code has stopped working.</Text>
+          <LiveCounter count={classroom.studentCount} live={false} />
+        </>
+      ) : state.kind === 'live' ? (
+        <>
+          <QrPlate value={state.joinCode.joinUrl} label={qrLabel} plate={plate} />
+          <CodeText code={state.joinCode.code} size="XL" testID="invite-code" />
+          <ExpiryLine expiresAt={state.joinCode.expiresAt} now={now} />
+          <LiveCounter count={classroom.studentCount} />
+        </>
+      ) : state.kind === 'expired' ? (
+        <>
+          <QrOff plate={plate}>
+            {regenerating ? (
+              <>
+                <Spinner large />
+                <Text style={styles.qrOffText}>Making a new code…</Text>
+              </>
+            ) : (
+              <>
+                <Icon name="time-outline" size={40} color={colors.ink2} />
+                <Text style={styles.qrOffText}>This code expired</Text>
+              </>
+            )}
+          </QrOff>
+          {state.joinCode ? (
+            <CodeText code={state.joinCode.code} size="XL" struck testID="invite-code" />
+          ) : null}
+          <StatusPill kind="expired" label="Code expired" />
+          <Text variant="caption" align="center" style={styles.note}>
+            Students can&apos;t join until you make a new code.
+          </Text>
+        </>
+      ) : (
+        <>
+          <QrOff plate={plate}>
+            <Icon name="lock-closed-outline" size={40} color={colors.ink2} />
+            <Text style={styles.qrOffText}>QR hidden while joining is closed</Text>
+          </QrOff>
+          <Text variant="codeXL" style={{ color: colors.ink2 }} accessibilityLabel="Code hidden">
+            ••• •••
+          </Text>
+          <StatusPill kind="closed" label="Joining closed" />
+          <LiveCounter count={classroom.studentCount} live={false} />
+        </>
+      )}
+      {errors}
+      {confirm}
+    </Screen>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface, paddingHorizontal: spacing.lg },
-  topBar: { flexDirection: 'row', justifyContent: 'flex-start' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  qr: { padding: spacing.md, backgroundColor: '#FFFFFF', borderRadius: radius.lg },
-  codeBlock: { gap: spacing.xs },
-  count: {
-    flexDirection: 'row',
+  portrait: { alignItems: 'center', paddingTop: 0 },
+  name: { maxWidth: '100%' },
+  qr: {
+    backgroundColor: qr.plate,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: qr.edge,
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    justifyContent: 'center',
   },
-  actions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch' },
-  action: { flex: 1 },
-  notice: { alignItems: 'center', gap: spacing.md, alignSelf: 'stretch' },
-  wide: { alignSelf: 'stretch' },
+  qrOff: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: space[4],
+  },
+  qrOffText: { ...font(600, 15, 22), color: colors.ink2, textAlign: 'center' },
+  codeSlot: { height: 68, justifyContent: 'center' },
+  note: { maxWidth: 260 },
+  actionRow: { flexDirection: 'row', gap: space[2] },
+  grow: { flex: 1, minWidth: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
+  wrap: { flexWrap: 'wrap' },
+  landscape: { flex: 1, flexDirection: 'row', gap: 28, backgroundColor: colors.surface },
+  side: { flex: 1, minWidth: 0, gap: 10 },
 });

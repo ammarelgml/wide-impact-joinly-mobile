@@ -1,5 +1,4 @@
 import { useMutation } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,26 +6,41 @@ import { StyleSheet, View } from 'react-native';
 import type { Role } from '@/api/client';
 import { errorMessage } from '@/api/messages';
 import { config } from '@/lib/config';
-import { Banner, Button, Screen, Sheet, Text, spacing } from '@/ui';
+import { formatJoinCode } from '@/lib/format';
+import { useIsOffline } from '@/lib/network';
+import {
+  Banner,
+  Button,
+  JoinlyMark,
+  Screen,
+  Sheet,
+  SheetOption,
+  SheetTitle,
+  Text,
+  space,
+} from '@/ui';
 
 import { signInAsDemo, signInWithGoogle } from './auth-service';
 import { GoogleSignInError } from './google';
 import { useSession } from './session';
+
+const SIGN_IN_FAILED = "Couldn't sign in with Google. Check your connection and try again.";
 
 function signInErrorMessage(error: unknown): string {
   if (error instanceof GoogleSignInError) {
     if (error.reason === 'play-services')
       return 'Google Play services are needed to sign in. Update them and try again.';
     if (error.reason === 'in-progress') return 'Sign-in is already open. Finish it or try again.';
-    return "Google sign-in didn't complete. Please try again.";
+    return SIGN_IN_FAILED;
   }
   return errorMessage(error);
 }
 
-/** S2: Welcome and sign in. */
+/** S2: Welcome and sign in. Cancelling the Google picker returns here with no error. */
 export function WelcomeScreen() {
   const signOutReason = useSession((s) => s.signOutReason);
   const pendingJoinCode = useSession((s) => s.pendingJoinCode);
+  const offline = useIsOffline();
   const [demoOpen, setDemoOpen] = useState(false);
 
   const google = useMutation({
@@ -44,21 +58,42 @@ export function WelcomeScreen() {
 
   return (
     <Screen
-      edges={['top', 'bottom']}
+      offline="You're offline."
       footer={
         <>
+          {google.isError && !offline ? (
+            <Banner
+              tone="error"
+              message={signInErrorMessage(google.error)}
+              testID="sign-in-error"
+            />
+          ) : null}
+          {offline ? (
+            <Text variant="caption" align="center">
+              Connect to the internet to sign in.
+            </Text>
+          ) : null}
           <Button
             testID="google-sign-in"
-            label="Continue with Google"
+            variant="secondary"
             icon="logo-google"
-            loading={google.isPending}
-            disabled={busy}
+            label={google.isError ? 'Try again' : 'Continue with Google'}
+            busy={google.isPending}
+            busyLabel="Signing in…"
+            disabled={busy || offline}
             onPress={() => google.mutate()}
           />
-          {config.demoLoginEnabled ? (
+          {!offline ? (
+            <Text variant="caption" align="center">
+              Teachers and students use the same sign-in.
+            </Text>
+          ) : null}
+          {config.demoLoginEnabled && !offline ? (
             <Button
+              testID="demo-accounts"
               label="Demo accounts"
-              variant="ghost"
+              variant="text"
+              small
               disabled={busy}
               accessibilityHint="Sign in as a sample teacher or student for review"
               onPress={() => {
@@ -70,55 +105,62 @@ export function WelcomeScreen() {
         </>
       }
     >
+      <View style={styles.spacer} />
+      {signOutReason === 'expired' || pendingJoinCode ? (
+        <View style={styles.banners}>
+          {signOutReason === 'expired' ? (
+            <Banner tone="warning" lead="Your session expired." message="Please sign in again." />
+          ) : null}
+          {pendingJoinCode ? (
+            <Banner
+              testID="pending-code"
+              message={`Code ${formatJoinCode(pendingJoinCode)} is saved. You'll join after you sign in.`}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.hero}>
-        <Image
-          source={require('../../../assets/splash-icon.png')}
-          style={styles.mark}
-          accessibilityIgnoresInvertColors
-          accessible={false}
-        />
+        <JoinlyMark />
         <Text variant="display" align="center" accessibilityRole="header">
           Joinly
         </Text>
-        <Text tone="muted" align="center" style={styles.tagline}>
-          Create classes and bring students in within seconds, with a QR code or a 6-digit code.
+        <Text variant="body2" align="center" style={styles.tagline}>
+          Create classes and join them with a code or a scan.
         </Text>
       </View>
 
-      <View style={styles.messages}>
-        {pendingJoinCode ? <Banner message="Sign in to join the class you scanned." /> : null}
-        {signOutReason === 'expired' ? (
-          <Banner tone="warning" message="Your session ended. Please sign in again." />
-        ) : null}
-        {google.isError ? (
-          <Banner tone="error" message={signInErrorMessage(google.error)} testID="sign-in-error" />
-        ) : null}
-      </View>
-
-      <Sheet visible={demoOpen} onClose={() => !demo.isPending && setDemoOpen(false)}>
-        <Text variant="heading" accessibilityRole="header">
-          Demo accounts
-        </Text>
-        <Text tone="muted">
-          Sample accounts for reviewing the app, with classrooms already set up.
+      <Sheet visible={demoOpen} onClose={() => setDemoOpen(false)} dismissible={!demo.isPending}>
+        <SheetTitle>Demo accounts</SheetTitle>
+        <Text variant="body2">
+          For app review only. Each opens a sample account with test data.
         </Text>
         {demo.isError ? <Banner tone="error" message={errorMessage(demo.error)} /> : null}
-        <Button
+        <SheetOption
           testID="demo-teacher"
-          label="Continue as demo teacher"
-          icon="school"
-          loading={demo.isPending && demo.variables === 'teacher'}
+          icon="school-outline"
+          title="Teacher demo"
+          caption="Classrooms with students"
+          chevron
+          busy={demo.isPending && demo.variables === 'teacher'}
           disabled={demo.isPending}
           onPress={() => demo.mutate('teacher')}
         />
-        <Button
+        <SheetOption
           testID="demo-student"
-          label="Continue as demo student"
-          icon="person"
-          variant="secondary"
-          loading={demo.isPending && demo.variables === 'student'}
+          icon="person-outline"
+          title="Student demo"
+          caption="Already a member of a class"
+          chevron
+          busy={demo.isPending && demo.variables === 'student'}
           disabled={demo.isPending}
           onPress={() => demo.mutate('student')}
+        />
+        <Button
+          label="Cancel"
+          variant="text"
+          disabled={demo.isPending}
+          onPress={() => setDemoOpen(false)}
         />
       </Sheet>
     </Screen>
@@ -126,14 +168,8 @@ export function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    paddingTop: spacing.xxxl,
-  },
-  mark: { width: 88, height: 88, marginBottom: spacing.sm },
-  tagline: { maxWidth: 320 },
-  messages: { gap: spacing.sm },
+  spacer: { height: 32 },
+  banners: { gap: space[2] },
+  hero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[4] },
+  tagline: { maxWidth: 260 },
 });

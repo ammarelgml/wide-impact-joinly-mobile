@@ -14,8 +14,12 @@ type RosterPage = Schemas['RosterPage'];
 type ClassroomInput = Schemas['CreateClassroomBody'];
 type ClassroomPatch = Schemas['UpdateClassroomBody'];
 
-/** Live roster on the invite screen: poll every 5 s, only while that screen is focused (spec F2). */
-export const LIVE_POLL_MS = 5_000;
+/**
+ * Live updates by polling, only while the screen is focused. The invite screen's counter must move
+ * within 2 s of a join; the classroom screen's roster picks up new students every 5 s.
+ */
+export const INVITE_POLL_MS = 2_000;
+export const ROSTER_POLL_MS = 5_000;
 
 export function useClassrooms() {
   return useInfiniteQuery({
@@ -32,13 +36,13 @@ export function useClassrooms() {
   });
 }
 
-export function useClassroom(id: string, options: { poll?: boolean } = {}) {
+export function useClassroom(id: string, options: { pollMs?: number | false } = {}) {
   const queryClient = useQueryClient();
   return useQuery<Classroom>({
     queryKey: queryKeys.classrooms.detail(id),
     queryFn: ({ signal }) =>
       unwrap(api.GET('/v1/classrooms/{id}', { params: { path: { id } }, signal })),
-    refetchInterval: options.poll ? LIVE_POLL_MS : false,
+    refetchInterval: options.pollMs ?? false,
     // Opening a class from the list renders instantly from the list's copy, then refreshes.
     placeholderData: () =>
       queryClient
@@ -48,7 +52,7 @@ export function useClassroom(id: string, options: { poll?: boolean } = {}) {
   });
 }
 
-export function useRoster(id: string, options: { poll?: boolean } = {}) {
+export function useRoster(id: string, options: { pollMs?: number | false } = {}) {
   return useInfiniteQuery({
     queryKey: queryKeys.classrooms.roster(id),
     queryFn: ({ pageParam, signal }) =>
@@ -60,7 +64,7 @@ export function useRoster(id: string, options: { poll?: boolean } = {}) {
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last: RosterPage) => last.nextCursor ?? undefined,
-    refetchInterval: options.poll ? LIVE_POLL_MS : false,
+    refetchInterval: options.pollMs ?? false,
   });
 }
 

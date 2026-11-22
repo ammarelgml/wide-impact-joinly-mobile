@@ -5,8 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Role } from '@/api/client';
 import { isApiError } from '@/api/errors';
-import { errorMessage } from '@/api/messages';
-import { Banner, Button, Icon, Screen, Text, colors, radius, spacing, type IconName } from '@/ui';
+import { Banner, Button, Icon, Screen, Text, colors, radius, space, type IconName } from '@/ui';
 
 import { cancelSignUp, completeSignUp } from './auth-service';
 import { useSession } from './session';
@@ -16,9 +15,9 @@ const OPTIONS: { role: Role; title: string; description: string; icon: IconName 
     role: 'teacher',
     title: 'Teacher',
     description: 'Create classes and invite students',
-    icon: 'school',
+    icon: 'school-outline',
   },
-  { role: 'student', title: 'Student', description: 'Join your classes', icon: 'person' },
+  { role: 'student', title: 'Student', description: 'Join your classes', icon: 'person-outline' },
 ];
 
 /** S3: shown only on a first sign-in, after the API answered ROLE_REQUIRED. */
@@ -35,33 +34,50 @@ export function RoleScreen() {
   return (
     <Screen
       footer={
-        tokenExpired ? (
-          <Button
-            label="Sign in again"
-            onPress={() => {
-              cancelSignUp();
-              router.replace('/welcome');
-            }}
-          />
-        ) : (
-          <Button
-            testID="role-continue"
-            label="Continue"
-            disabled={!role}
-            loading={submit.isPending}
-            onPress={() => role && submit.mutate(role)}
-          />
-        )
+        <>
+          {submit.isError ? (
+            <Banner
+              tone="error"
+              message={
+                tokenExpired
+                  ? 'Your Google sign-in expired while choosing. Please sign in again.'
+                  : "Couldn't save your role. Check your connection and try again."
+              }
+            />
+          ) : null}
+          {tokenExpired ? (
+            <Button
+              label="Sign in again"
+              onPress={() => {
+                cancelSignUp();
+                router.replace('/welcome');
+              }}
+            />
+          ) : (
+            <Button
+              testID="role-continue"
+              label={submit.isError ? 'Try again' : role ? `Continue as ${role}` : 'Continue'}
+              disabled={!role}
+              busy={submit.isPending}
+              busyLabel="Setting up…"
+              onPress={() => role && submit.mutate(role)}
+            />
+          )}
+        </>
       }
+      contentStyle={styles.content}
     >
-      <View style={styles.intro}>
-        <Text variant="title" accessibilityRole="header">
-          How will you use Joinly?
-        </Text>
-        <Text tone="muted">You can&apos;t change this later.</Text>
-      </View>
+      <View style={styles.spacer} />
+      <Text variant="title" accessibilityRole="header">
+        How will you use Joinly?
+      </Text>
+      <Text variant="body2">Pick the one that fits you.</Text>
 
-      <View accessibilityRole="radiogroup" style={styles.options}>
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Choose your role"
+        style={styles.options}
+      >
         {OPTIONS.map((option) => {
           const selected = role === option.role;
           return (
@@ -73,64 +89,65 @@ export function RoleScreen() {
               accessibilityRole="radio"
               accessibilityState={{ checked: selected, disabled: submit.isPending }}
               accessibilityLabel={`${option.title}. ${option.description}`}
-              style={[styles.option, selected && styles.optionSelected]}
+              style={[styles.card, selected && styles.cardSelected]}
             >
-              <View style={[styles.optionIcon, selected && { backgroundColor: colors.primary }]}>
-                <Icon
-                  name={option.icon}
-                  size={28}
-                  color={selected ? colors.onPrimary : colors.primary}
-                />
+              <View style={[styles.cardIcon, selected && styles.cardIconSelected]}>
+                <Icon name={option.icon} size={28} color={selected ? colors.primary : colors.ink} />
               </View>
-              <View style={styles.optionText}>
-                <Text variant="heading">{option.title}</Text>
-                <Text tone="muted">{option.description}</Text>
+              <View style={styles.cardText}>
+                <Text variant="headline">{option.title}</Text>
+                <Text variant="body2">{option.description}</Text>
               </View>
-              <Icon
-                name={selected ? 'radio-button-on' : 'radio-button-off'}
-                color={selected ? colors.primary : colors.textDisabled}
-              />
+              <View style={[styles.radio, selected && styles.radioSelected]}>
+                {selected ? <Icon name="checkmark" size={16} color={colors.onPrimary} /> : null}
+              </View>
             </Pressable>
           );
         })}
       </View>
 
-      {submit.isError ? (
-        <Banner
-          tone="error"
-          message={
-            tokenExpired
-              ? 'Your Google sign-in expired while choosing. Please sign in again.'
-              : errorMessage(submit.error)
-          }
-        />
-      ) : null}
+      <Banner message="Your role can't be changed later." />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  intro: { gap: spacing.xs, marginTop: spacing.md },
-  options: { gap: spacing.md },
-  option: {
+  content: { gap: space[4] },
+  spacer: { height: 32 - space[4] },
+  options: { gap: space[3] },
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    padding: spacing.lg,
+    gap: space[4],
+    padding: 20,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.line,
     backgroundColor: colors.surface,
-    minHeight: 96,
   },
-  optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  optionIcon: {
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  cardIcon: {
     width: 56,
     height: 56,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionText: { flex: 1, gap: spacing.xxs },
+  cardIconSelected: { backgroundColor: colors.surface },
+  cardText: { flex: 1 },
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
 });

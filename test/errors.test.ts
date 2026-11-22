@@ -44,10 +44,10 @@ describe('errorMessage', () => {
     expect(errorMessage(err('JOIN_CODE_EXPIRED'))).toBe(
       'This code has expired. Ask your teacher for a new one.',
     );
-    expect(errorMessage(err('JOIN_CODE_INVALID'))).toMatch(/doesn't match any class/);
-    expect(errorMessage(err('JOINING_CLOSED'))).toMatch(/not accepting new students/);
+    expect(errorMessage(err('JOIN_CODE_INVALID'))).toMatch(/doesn't match a class/);
+    expect(errorMessage(err('JOINING_CLOSED'))).toMatch(/isn't accepting new students/);
     expect(errorMessage(err('RATE_LIMITED', { retryAfterSeconds: 75 }))).toBe(
-      'Too many attempts. Try again in 1:15.',
+      'Too many tries. You can try again in 1:15.',
     );
   });
 
@@ -67,10 +67,10 @@ describe('errorMessage', () => {
 
 describe('formatWait', () => {
   it('formats countdowns', () => {
-    expect(formatWait(1)).toBe('1 second');
-    expect(formatWait(40)).toBe('40 seconds');
+    expect(formatWait(1)).toBe('0:01');
+    expect(formatWait(45)).toBe('0:45');
     expect(formatWait(900)).toBe('15:00');
-    expect(formatWait(-5)).toBe('0 seconds');
+    expect(formatWait(-5)).toBe('0:00');
   });
 });
 

@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
+import { Icon, type IconName } from './icon';
 import { Text } from './text';
-import { colors, radius, spacing } from './theme';
+import { colors, elevation, fonts, motion, radius, space } from './theme';
 
-/** Short-lived message over content, e.g. "This isn't a Joinly code" on the scanner. */
+/** Short-lived message over content (3 s), e.g. "That's not a Joinly code" on the scanner. */
 export function Toast({
   message,
   onHide,
-  durationMs = 2500,
+  icon = 'information-circle-outline',
+  light = false,
+  bottom = 140,
+  durationMs = motion.toast,
 }: {
   message: string | null;
   onHide: () => void;
+  icon?: IconName;
+  /** Light toast for the dark camera screen. */
+  light?: boolean;
+  bottom?: number;
   durationMs?: number;
 }) {
   const [opacity] = useState(() => new Animated.Value(0));
@@ -25,25 +33,32 @@ export function Toast({
   }, [message, durationMs, onHide, opacity]);
 
   if (!message) return null;
+  const bg = light ? colors.onInverse : colors.inverse;
+  const fg = light ? colors.ink : colors.onInverse;
   return (
     <Animated.View
-      style={[styles.toast, { opacity }]}
+      style={[styles.toast, { opacity, bottom, backgroundColor: bg }]}
       accessibilityLiveRegion="assertive"
       accessibilityRole="alert"
     >
-      <Text variant="label" tone="onPrimary" align="center">
-        {message}
-      </Text>
+      <Icon name={icon} size={20} color={fg} />
+      <Text style={[styles.text, { color: fg }]}>{message}</Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   toast: {
-    backgroundColor: colors.text,
+    position: 'absolute',
+    start: space[4],
+    end: space[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
     borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    alignSelf: 'center',
+    paddingHorizontal: space[4],
+    paddingVertical: 14,
+    ...elevation.toast,
   },
+  text: { flex: 1, fontFamily: fonts[500], fontSize: 14, lineHeight: 20 },
 });

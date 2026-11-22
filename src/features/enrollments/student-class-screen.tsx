@@ -1,24 +1,14 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
-import { formatSince, formatStudentCount } from '@/lib/format';
-import {
-  Avatar,
-  Button,
-  Card,
-  ConfirmDialog,
-  EmptyState,
-  ErrorState,
-  Icon,
-  Screen,
-  SkeletonBlock,
-  Text,
-  colors,
-  spacing,
-} from '@/ui';
+import { formatSince } from '@/lib/format';
+import { useIsOffline } from '@/lib/network';
+import { Button, ConfirmSheet, EmptyState, Screen } from '@/ui';
 
 import { useEnrollments, useLeave } from './api';
+import { ClassSummaryCard, ClassSummarySkeleton } from './class-summary-card';
+
+const backHome = () => router.dismissTo('/student');
 
 /**
  * P5: one joined class. The API has no single-enrollment endpoint, so this reads the student's
@@ -27,6 +17,7 @@ import { useEnrollments, useLeave } from './api';
 export function StudentClassScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const query = useEnrollments();
+  const offline = useIsOffline();
   const leave = useLeave(id);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
@@ -40,7 +31,7 @@ export function StudentClassScreen() {
     if (!enrollment && query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
   }, [enrollment, query]);
 
-  const title = <Stack.Screen options={{ title: '' }} />;
+  const appBar = { title: 'Class' };
 
   if (leave.isSuccess) return null;
 
@@ -48,52 +39,34 @@ export function StudentClassScreen() {
     const { classroom } = enrollment;
     return (
       <Screen
+        appBar={appBar}
         footer={
           <Button
             testID="leave-class"
             label="Leave class"
-            variant="dangerGhost"
+            variant="dangerText"
             icon="exit-outline"
+            disabled={offline}
             onPress={() => setConfirmLeave(true)}
           />
         }
       >
-        {title}
-        <Text variant="title" accessibilityRole="header">
-          {classroom.name}
-        </Text>
-        {classroom.description ? <Text tone="muted">{classroom.description}</Text> : null}
-        <Card style={styles.card}>
-          <View style={styles.row}>
-            <Avatar name={classroom.teacher.name} uri={classroom.teacher.avatarUrl} size={48} />
-            <View>
-              <Text variant="caption" tone="muted">
-                Teacher
-              </Text>
-              <Text variant="bodyStrong">{classroom.teacher.name}</Text>
-            </View>
-          </View>
-          <View style={styles.row}>
-            <Icon name="calendar-outline" color={colors.textMuted} />
-            <Text>Joined {formatSince(enrollment.joinedAt)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Icon name="people-outline" color={colors.textMuted} />
-            <Text>{formatStudentCount(classroom.studentCount)}</Text>
-          </View>
-        </Card>
-
-        <ConfirmDialog
+        <ClassSummaryCard
+          classroom={classroom}
+          joined={`Joined ${formatSince(enrollment.joinedAt)}`}
+        />
+        <ConfirmSheet
           visible={confirmLeave}
-          title={`Leave "${classroom.name}"?`}
-          message="You'll need a new code from your teacher to join again."
+          title={`Leave ${classroom.name}?`}
+          message="You'll lose access right away. To come back, you'll need a new code from your teacher."
           confirmLabel="Leave class"
-          destructive
+          busyLabel="Leaving…"
+          cancelLabel="Stay in class"
           onCancel={() => setConfirmLeave(false)}
           onConfirm={async () => {
             await leave.mutateAsync();
             setConfirmLeave(false);
-            router.back();
+            backHome();
           }}
         />
       </Screen>
@@ -102,39 +75,53 @@ export function StudentClassScreen() {
 
   if (searching) {
     return (
-      <Screen>
-        {title}
-        <SkeletonBlock width="70%" height={28} />
-        <SkeletonBlock height={120} />
+      <Screen
+        appBar={appBar}
+        footer={
+          <Button
+            label="Leave class"
+            variant="dangerText"
+            icon="exit-outline"
+            disabled
+            onPress={() => {}}
+          />
+        }
+      >
+        <ClassSummarySkeleton />
       </Screen>
     );
   }
 
   if (query.isError) {
     return (
-      <Screen>
-        {title}
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+      <Screen
+        appBar={appBar}
+        center
+        footer={<Button label="Try again" icon="refresh" onPress={() => void query.refetch()} />}
+      >
+        <EmptyState
+          icon="cloud-offline-outline"
+          tone="error"
+          title="Couldn't load this class"
+          message="Check your connection and try again."
+        />
       </Screen>
     );
   }
 
   // Removed by the teacher, or the class was deleted since the list was loaded.
   return (
-    <Screen>
-      {title}
+    <Screen
+      appBar={appBar}
+      center
+      footer={<Button label="Back to my classrooms" onPress={backHome} />}
+    >
       <EmptyState
-        icon="alert-circle-outline"
+        icon="file-tray-outline"
+        tone="neutral"
         title="This class is no longer available"
-        message="Your teacher may have removed you or deleted the class."
-      >
-        <Button label="Back to my classes" onPress={() => router.back()} />
-      </EmptyState>
+        message="Your teacher removed you or deleted the class."
+      />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { gap: spacing.lg },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-});

@@ -1,31 +1,37 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Button } from './button';
 import { Icon, type IconName } from './icon';
 import { Text } from './text';
-import { colors, radius, spacing } from './theme';
+import { colors, fonts, radius, space } from './theme';
 
-type Tone = 'info' | 'error' | 'warning' | 'success';
+export type BannerTone = 'info' | 'error' | 'warning' | 'success';
 
-const tones: Record<Tone, { bg: string; fg: string; icon: IconName }> = {
-  info: { bg: colors.primarySoft, fg: colors.text, icon: 'information-circle' },
-  error: { bg: colors.dangerSoft, fg: colors.danger, icon: 'alert-circle' },
-  warning: { bg: colors.warningSoft, fg: colors.warning, icon: 'warning' },
-  success: { bg: colors.successSoft, fg: colors.success, icon: 'checkmark-circle' },
+const tones: Record<BannerTone, { bg: string; icon: IconName; iconColor: string }> = {
+  info: {
+    bg: colors.primarySoft,
+    icon: 'information-circle-outline',
+    iconColor: colors.onPrimarySoft,
+  },
+  error: { bg: colors.dangerSoft, icon: 'alert-circle-outline', iconColor: colors.danger },
+  warning: { bg: colors.warningSoft, icon: 'warning-outline', iconColor: colors.warning },
+  success: { bg: colors.successSoft, icon: 'checkmark-circle-outline', iconColor: colors.success },
 };
 
-/** Inline message on the screen where something happened, with an optional next action. */
+/**
+ * Inline message that stays until the problem is fixed. An optional bold `lead` states what
+ * happened; `message` says what to do. Errors announce assertively, the rest politely.
+ */
 export function Banner({
-  message,
   tone = 'info',
-  actionLabel,
-  onAction,
+  lead,
+  message,
+  icon,
   testID,
 }: {
-  message: string;
-  tone?: Tone;
-  actionLabel?: string;
-  onAction?: () => void;
+  tone?: BannerTone;
+  lead?: string;
+  message?: string;
+  icon?: IconName;
   testID?: string;
 }) {
   const t = tones[tone];
@@ -34,27 +40,27 @@ export function Banner({
       testID={testID}
       style={[styles.base, { backgroundColor: t.bg }]}
       accessibilityRole={tone === 'error' ? 'alert' : undefined}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={tone === 'error' ? 'assertive' : 'polite'}
     >
-      <View style={styles.row}>
-        <Icon name={t.icon} size={20} color={t.fg} />
-        <Text
-          variant="caption"
-          style={[styles.message, { color: tone === 'info' ? colors.text : t.fg }]}
-        >
-          {message}
-        </Text>
-      </View>
-      {actionLabel && onAction ? (
-        <Button label={actionLabel} variant="ghost" onPress={onAction} style={styles.action} />
-      ) : null}
+      <Icon name={icon ?? t.icon} size={20} color={t.iconColor} />
+      <Text style={styles.message}>
+        {lead ? <Text style={styles.lead}>{lead}</Text> : null}
+        {lead && message ? ' ' : null}
+        {message}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
-  row: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  message: { flex: 1 },
-  action: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, minHeight: 40 },
+  base: {
+    flexDirection: 'row',
+    gap: space[3],
+    alignItems: 'flex-start',
+    paddingVertical: space[3],
+    paddingHorizontal: 14,
+    borderRadius: radius.md,
+  },
+  message: { flex: 1, fontFamily: fonts[500], fontSize: 14, lineHeight: 20, color: colors.ink },
+  lead: { fontFamily: fonts[700] },
 });

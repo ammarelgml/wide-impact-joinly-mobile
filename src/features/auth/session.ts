@@ -68,6 +68,9 @@ export async function endSession(reason: 'expired' | null = null): Promise<void>
     user: null,
     signOutReason: reason,
     pendingRoleIdToken: null,
+    // An expired session keeps a pending join code so the student resumes at the join confirm;
+    // a deliberate sign-out clears it.
+    ...(reason === null ? { pendingJoinCode: null } : {}),
   });
   endedListeners.forEach((listener) => listener());
 }

@@ -1,34 +1,24 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
 
-import type { ClassroomSummary, JoinedVia } from '@/api/client';
+import type { JoinedVia } from '@/api/client';
 import { isApiError } from '@/api/errors';
 import { errorMessage } from '@/api/messages';
 import { setPendingJoinCode, useSession } from '@/features/auth/session';
+import { ClassSummaryCard, ClassSummarySkeleton } from '@/features/enrollments/class-summary-card';
 import { usePreview, useJoin } from '@/features/enrollments/api';
-import { formatStudentCount } from '@/lib/format';
-import {
-  Avatar,
-  Banner,
-  Button,
-  Card,
-  EmptyState,
-  Icon,
-  Screen,
-  SkeletonBlock,
-  Text,
-  colors,
-  spacing,
-} from '@/ui';
+import { useIsOffline } from '@/lib/network';
+import { Banner, Button, EmptyState, Screen, StateIcon, Text, goBackOr, motion } from '@/ui';
 
 import { isJoinCode } from './join-code';
 
+const appBar = { title: 'Join class', leading: 'close' as const, onLeading: goBack };
+const OFFLINE = "You're offline. Connect to join this class.";
+
 /** Back where the student came from, or home when the confirm was opened straight from a QR link. */
 function goBack() {
-  if (router.canGoBack()) router.back();
-  else router.replace('/student');
+  goBackOr('/student');
 }
 
 function openClass(id: string) {
@@ -36,26 +26,8 @@ function openClass(id: string) {
   router.push({ pathname: '/student/classes/[id]', params: { id } });
 }
 
-function ClassSummaryCard({ classroom }: { classroom: ClassroomSummary }) {
-  return (
-    <Card style={styles.summary}>
-      <Text variant="title" testID="preview-name">
-        {classroom.name}
-      </Text>
-      {classroom.description ? <Text tone="muted">{classroom.description}</Text> : null}
-      <View style={styles.teacher}>
-        <Avatar name={classroom.teacher.name} uri={classroom.teacher.avatarUrl} size={40} />
-        <View>
-          <Text variant="caption" tone="muted">
-            Teacher
-          </Text>
-          <Text variant="bodyStrong">{classroom.teacher.name}</Text>
-        </View>
-      </View>
-      <Text tone="muted">{formatStudentCount(classroom.studentCount)}</Text>
-    </Card>
-  );
-}
+const enterCode = () => router.replace('/student/join/code');
+const scanQr = () => router.replace('/student/join/scan');
 
 /** P4: preview the class behind a code, then join. P6 (the success moment) is the joined state of this screen. */
 export function JoinConfirmScreen() {
@@ -71,68 +43,100 @@ export function JoinConfirmScreen() {
 
   if (!code) {
     return (
-      <Screen>
-        <EmptyState icon="alert-circle" title="That link isn't a valid invite">
-          <Button label="Enter a code" onPress={() => router.replace('/student/join/code')} />
-        </EmptyState>
+      <Screen
+        appBar={appBar}
+        center
+        footer={
+          <>
+            <Button label="Enter code" icon="keypad-outline" onPress={enterCode} />
+            <Button
+              label="Scan QR code"
+              variant="secondary"
+              icon="qr-code-outline"
+              onPress={scanQr}
+            />
+          </>
+        }
+      >
+        <EmptyState
+          icon="alert-circle-outline"
+          tone="error"
+          title="That link isn't a valid invite"
+          message="Scan your teacher's QR code again, or type the 6-digit code."
+        />
       </Screen>
     );
   }
   return <Confirm code={code} via={via} />;
 }
 
+function Joined({
+  name,
+  teacher,
+  onContinue,
+}: {
+  name: string;
+  teacher: string;
+  onContinue: () => void;
+}) {
+  return (
+    <Screen
+      surface
+      center
+      offline={false}
+      footer={<Button testID="joined-continue" label="Continue" onPress={onContinue} />}
+    >
+      <StateIcon icon="checkmark" tone="success" size={96} />
+      <Text variant="display" align="center" accessibilityRole="header" testID="joined">
+        You&apos;re in
+      </Text>
+      <Text variant="subhead" align="center" accessibilityLiveRegion="assertive">
+        {name}
+      </Text>
+      <Text variant="body2" align="center">
+        {teacher}&apos;s class
+      </Text>
+    </Screen>
+  );
+}
+
 function Confirm({ code, via }: { code: string; via: JoinedVia }) {
   const preview = usePreview(code);
   const join = useJoin();
+  const offline = useIsOffline();
 
   useEffect(() => {
     if (!join.isSuccess) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const id = setTimeout(() => openClass(join.data.classroom.id), 1200);
+    const id = setTimeout(() => openClass(join.data.classroom.id), motion.joinedAutoContinue);
     return () => clearTimeout(id);
   }, [join.isSuccess, join.data]);
 
-  const tryAnother = (
-    <>
-      <Button label="Enter a different code" onPress={() => router.replace('/student/join/code')} />
-      <Button
-        label="Scan a QR code"
-        variant="secondary"
-        icon="qr-code-outline"
-        onPress={() => router.replace('/student/join/scan')}
-      />
-    </>
-  );
-
   // P6: joined.
   if (join.isSuccess) {
+    const { classroom } = join.data;
     return (
-      <Screen
-        footer={<Button label="Continue" onPress={() => openClass(join.data.classroom.id)} />}
-      >
-        <View style={styles.success} accessibilityLiveRegion="assertive">
-          <View style={styles.successIcon}>
-            <Icon name="checkmark" size={48} color={colors.onPrimary} />
-          </View>
-          <Text variant="title" align="center">
-            {join.data.alreadyMember ? "You're already in this class" : "You're in!"}
-          </Text>
-          <Text tone="muted" align="center">
-            {join.data.classroom.name}
-          </Text>
-        </View>
-      </Screen>
+      <Joined
+        name={classroom.name}
+        teacher={classroom.teacher.name}
+        onContinue={() => openClass(classroom.id)}
+      />
     );
   }
 
   if (preview.isPending) {
     return (
-      <Screen>
-        <Card style={styles.summary}>
-          <SkeletonBlock width="70%" height={28} />
-          <SkeletonBlock width="50%" height={16} />
-          <SkeletonBlock width="40%" height={16} />
-        </Card>
+      <Screen
+        appBar={appBar}
+        offline={OFFLINE}
+        footer={
+          <>
+            <Button label="Join class" disabled onPress={() => {}} />
+            <Button label="Cancel" variant="text" onPress={goBack} />
+          </>
+        }
+      >
+        <ClassSummarySkeleton />
       </Screen>
     );
   }
@@ -140,22 +144,72 @@ function Confirm({ code, via }: { code: string; via: JoinedVia }) {
   if (preview.isError) {
     const expired = isApiError(preview.error, 'JOIN_CODE_EXPIRED');
     const closed = isApiError(preview.error, 'JOINING_CLOSED');
+    const invalid = isApiError(preview.error, 'JOIN_CODE_INVALID');
+    const retryable = !expired && !invalid;
     return (
-      <Screen footer={tryAnother}>
+      <Screen
+        appBar={appBar}
+        offline={OFFLINE}
+        center
+        footer={
+          retryable ? (
+            <>
+              <Button
+                label="Try again"
+                icon="refresh"
+                busy={preview.isFetching}
+                busyLabel="Checking…"
+                disabled={offline}
+                onPress={() => void preview.refetch()}
+              />
+              <Button label="Back" variant="text" onPress={goBack} />
+            </>
+          ) : (
+            <>
+              <Button label="Enter a different code" icon="keypad-outline" onPress={enterCode} />
+              <Button
+                label="Scan QR code"
+                variant="secondary"
+                icon="qr-code-outline"
+                onPress={scanQr}
+              />
+            </>
+          )
+        }
+      >
         <EmptyState
-          icon={expired ? 'time-outline' : closed ? 'lock-closed-outline' : 'alert-circle-outline'}
+          testID="preview-error"
+          icon={
+            expired
+              ? 'time-outline'
+              : closed
+                ? 'lock-closed-outline'
+                : invalid
+                  ? 'alert-circle-outline'
+                  : 'cloud-offline-outline'
+          }
+          tone={closed || expired ? 'neutral' : 'error'}
           title={
             expired
               ? 'This code has expired'
               : closed
                 ? 'Joining is closed'
-                : "We couldn't open this invite"
+                : invalid
+                  ? "That code doesn't match a class"
+                  : "Couldn't load this class"
           }
-          message={errorMessage(preview.error)}
+          message={
+            expired
+              ? 'Ask your teacher for a new one.'
+              : closed
+                ? 'This class isn’t accepting new students. Ask your teacher to turn on joining.'
+                : invalid
+                  ? 'Check the digits and try again.'
+                  : isApiError(preview.error, 'NETWORK')
+                    ? 'Check your connection and try again.'
+                    : errorMessage(preview.error)
+          }
         />
-        {isApiError(preview.error, 'NETWORK') ? (
-          <Button label="Try again" variant="secondary" onPress={() => void preview.refetch()} />
-        ) : null}
       </Screen>
     );
   }
@@ -164,46 +218,63 @@ function Confirm({ code, via }: { code: string; via: JoinedVia }) {
 
   if (alreadyMember) {
     return (
-      <Screen footer={<Button label="Open class" onPress={() => openClass(classroom.id)} />}>
-        <Banner tone="success" message="You're already in this class." />
+      <Screen
+        appBar={appBar}
+        offline={false}
+        footer={
+          <>
+            <Button
+              testID="open-class"
+              label="Open class"
+              onPress={() => openClass(classroom.id)}
+            />
+            <Button label="Back" variant="text" onPress={goBack} />
+          </>
+        }
+      >
         <ClassSummaryCard classroom={classroom} />
+        <Banner lead="You're already in this class." testID="already-member" />
       </Screen>
     );
   }
 
+  // The teacher closed joining between the preview and the tap.
+  const closedOnJoin = isApiError(join.error, 'JOINING_CLOSED');
   return (
     <Screen
+      appBar={appBar}
+      offline={OFFLINE}
       footer={
         <>
           <Button
             testID="join-confirm"
-            label="Join class"
-            loading={join.isPending}
+            label={closedOnJoin ? 'Try again' : 'Join class'}
+            icon={closedOnJoin ? 'refresh' : undefined}
+            busy={join.isPending}
+            busyLabel="Joining…"
+            disabled={offline}
             onPress={() => join.mutate({ code, via })}
           />
-          <Button label="Cancel" variant="secondary" disabled={join.isPending} onPress={goBack} />
+          <Button
+            label={closedOnJoin ? 'Back' : 'Cancel'}
+            variant="text"
+            disabled={join.isPending}
+            onPress={goBack}
+          />
         </>
       }
     >
-      <Text variant="heading" tone="muted">
-        You&apos;re about to join
-      </Text>
+      {closedOnJoin ? null : <Text variant="caption">You&apos;re joining</Text>}
       <ClassSummaryCard classroom={classroom} />
-      {join.isError ? <Banner tone="error" message={errorMessage(join.error)} /> : null}
+      {closedOnJoin ? (
+        <Banner
+          tone="warning"
+          lead="This class isn't accepting new students."
+          message="Ask your teacher to turn on joining."
+        />
+      ) : join.isError ? (
+        <Banner tone="error" message={errorMessage(join.error)} testID="join-error" />
+      ) : null}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  summary: { gap: spacing.md },
-  teacher: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  success: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  successIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

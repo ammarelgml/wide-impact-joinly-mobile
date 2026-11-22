@@ -30,14 +30,21 @@ export default function JoinLink() {
     );
   }
   return (
-    <Screen edges={['top', 'bottom']}>
+    <Screen
+      appBar={{
+        title: 'Class invite',
+        leading: 'close',
+        onLeading: () => router.replace('/teacher'),
+      }}
+      center
+      footer={<Button label="Go to my classrooms" onPress={() => router.replace('/teacher')} />}
+    >
       <EmptyState
-        icon="qr-code"
+        icon="qr-code-outline"
+        tone="neutral"
         title="This is a class invite"
         message="Invites are for student accounts. You're signed in as a teacher."
-      >
-        <Button label="Go to my classrooms" onPress={() => router.replace('/teacher')} />
-      </EmptyState>
+      />
     </Screen>
   );
 }

@@ -13,6 +13,7 @@ describe('format', () => {
     expect(formatTimeLeft(new Date(NOW + 18.5 * HOUR).toISOString(), NOW)).toBe('18 hours');
     expect(formatTimeLeft(new Date(NOW + HOUR).toISOString(), NOW)).toBe('1 hour');
     expect(formatTimeLeft(new Date(NOW + 45 * 60_000).toISOString(), NOW)).toBe('45 minutes');
+    expect(formatTimeLeft(new Date(NOW + 24 * HOUR).toISOString(), NOW)).toBe('24 hours');
     expect(formatTimeLeft(new Date(NOW + 30 * 24 * HOUR).toISOString(), NOW)).toBe('30 days');
     expect(formatTimeLeft(new Date(NOW - 1).toISOString(), NOW)).toBeNull();
   });
@@ -21,6 +22,7 @@ describe('format', () => {
     expect(formatSince(new Date(NOW).toISOString(), NOW)).toBe('today');
     expect(formatSince(new Date(NOW - 24 * HOUR).toISOString(), NOW)).toBe('yesterday');
     expect(formatSince(new Date(NOW - 3 * 24 * HOUR).toISOString(), NOW)).toBe('3 days ago');
+    expect(formatSince(new Date(NOW - 10 * 24 * HOUR).toISOString(), NOW)).toBe('Nov 13');
   });
 
   it('pluralises student counts', () => {
@@ -42,11 +44,17 @@ describe('inviteState', () => {
   });
 
   it('is closed whenever joining is off, even with a live code', () => {
-    expect(inviteState({ joiningOpen: false, joinCode }, NOW).kind).toBe('closed');
+    expect(inviteState({ joiningOpen: false, joinCode }, NOW)).toEqual({
+      kind: 'closed',
+      joinCode,
+    });
   });
 
   it('is expired when the API has no live code, or the code lapsed on the device clock', () => {
     expect(inviteState({ joiningOpen: true, joinCode: null }, NOW).kind).toBe('expired');
-    expect(inviteState({ joiningOpen: true, joinCode }, NOW + 2 * HOUR).kind).toBe('expired');
+    expect(inviteState({ joiningOpen: true, joinCode }, NOW + 2 * HOUR)).toEqual({
+      kind: 'expired',
+      joinCode,
+    });
   });
 });

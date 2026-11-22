@@ -3,9 +3,25 @@ import { useState } from 'react';
 
 import { CodeInput } from '@/features/join/code-input';
 
-function Harness({ onComplete }: { onComplete: (code: string) => void }) {
-  const [value, setValue] = useState('');
-  return <CodeInput value={value} onChange={setValue} onComplete={onComplete} autoFocus={false} />;
+function Harness({
+  onComplete,
+  initial = '',
+  error = false,
+}: {
+  onComplete: (code: string) => void;
+  initial?: string;
+  error?: boolean;
+}) {
+  const [value, setValue] = useState(initial);
+  return (
+    <CodeInput
+      value={value}
+      onChange={setValue}
+      onComplete={onComplete}
+      error={error}
+      autoFocus={false}
+    />
+  );
 }
 
 describe('CodeInput', () => {
@@ -38,6 +54,21 @@ describe('CodeInput', () => {
 
   it('is labelled for screen readers', async () => {
     await render(<Harness onComplete={jest.fn()} />);
-    expect(screen.getByLabelText('Join code, 6 digits')).toBeTruthy();
+    expect(screen.getByLabelText('Class code, 6 digits')).toBeTruthy();
+  });
+
+  it('after an error, keeps the digits for fixing but restarts on a new digit', async () => {
+    const onComplete = jest.fn();
+    await render(<Harness onComplete={onComplete} initial="482931" error />);
+    const input = screen.getByTestId('code-input');
+    await fireEvent.changeText(input, '4829317');
+    expect(screen.getByTestId('code-input').props.value).toBe('7');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('after an error, deleting a digit edits the same attempt', async () => {
+    await render(<Harness onComplete={jest.fn()} initial="482931" error />);
+    await fireEvent.changeText(screen.getByTestId('code-input'), '48293');
+    expect(screen.getByTestId('code-input').props.value).toBe('48293');
   });
 });

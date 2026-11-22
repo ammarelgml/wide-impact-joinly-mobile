@@ -1,24 +1,30 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Enrollment } from '@/api/client';
+import { ProfileButton } from '@/features/auth/profile-button';
 import { formatSince } from '@/lib/format';
+import { useIsOffline } from '@/lib/network';
 import {
   Avatar,
   Banner,
   Button,
   Card,
   EmptyState,
-  ErrorState,
+  ExtendedFab,
   Icon,
-  OfflineBanner,
+  Loading,
   Screen,
   Sheet,
-  SkeletonList,
+  SheetOption,
+  SheetTitle,
+  SkeletonBlock,
   Text,
   colors,
-  spacing,
+  font,
+  space,
 } from '@/ui';
 
 import { useEnrollments } from './api';
@@ -35,88 +41,138 @@ function ClassCard({ enrollment }: { enrollment: Enrollment }) {
       onPress={() =>
         router.push({ pathname: '/student/classes/[id]', params: { id: classroom.id } })
       }
-      accessibilityLabel={`${classroom.name}, taught by ${classroom.teacher.name}. ${joined}`}
+      accessibilityLabel={`${classroom.name}, ${classroom.teacher.name}. ${joined}`}
       accessibilityHint="Opens the class"
       style={styles.card}
     >
-      <View style={styles.cardText}>
-        <Text variant="heading" numberOfLines={2}>
+      <Avatar name={classroom.teacher.name} uri={classroom.teacher.avatarUrl} />
+      <View style={styles.cardMain}>
+        <Text variant="subhead" numberOfLines={1}>
           {classroom.name}
         </Text>
-        <View style={styles.teacher}>
-          <Avatar name={classroom.teacher.name} uri={classroom.teacher.avatarUrl} size={24} />
-          <Text tone="muted" numberOfLines={1} style={styles.flex}>
+        <View>
+          <Text style={styles.meta} numberOfLines={1}>
             {classroom.teacher.name}
           </Text>
+          <Text style={styles.meta}>{joined}</Text>
         </View>
-        <Text variant="caption" tone="muted">
-          {joined}
-        </Text>
       </View>
-      <Icon name="chevron-forward" color={colors.textMuted} />
+      <Icon name="chevron-forward" size={20} color={colors.ink2} />
     </Card>
   );
 }
 
-/** P1: the student's classes. */
+function SkeletonCards() {
+  return (
+    <Loading>
+      {[0, 1, 2].map((i) => (
+        <Card key={i} style={styles.card}>
+          <SkeletonBlock width={40} height={40} rounded={20} />
+          <View style={styles.cardMain}>
+            <SkeletonBlock width="72%" height={18} />
+            <SkeletonBlock width="44%" height={14} />
+          </View>
+        </Card>
+      ))}
+    </Loading>
+  );
+}
+
+/** P1: the student's classes. "Join a class" opens a chooser with Scan first, the fastest path. */
 export function StudentClassesScreen() {
   const query = useEnrollments();
+  const offline = useIsOffline();
+  const insets = useSafeAreaInsets();
   const [chooser, setChooser] = useState(false);
   const enrollments = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const appBar = { title: 'My classrooms', large: true, leading: null, action: <ProfileButton /> };
 
-  let body;
-  if (query.isPending) body = <SkeletonList />;
-  else if (query.isError && enrollments.length === 0)
-    body = <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
-  else if (enrollments.length === 0)
-    body = (
-      <EmptyState
-        icon="school-outline"
-        title="Join your first class"
-        message="Scan the QR code your teacher shows, or type their 6-digit code."
+  if (query.isError && enrollments.length === 0) {
+    return (
+      <Screen
+        appBar={appBar}
+        center
+        footer={
+          <Button
+            label="Retry"
+            icon="refresh"
+            busy={query.isFetching}
+            busyLabel="Retrying…"
+            onPress={() => void query.refetch()}
+          />
+        }
       >
-        <Button testID="empty-scan" label="Scan QR" icon="qr-code" onPress={scan} />
-        <Button
-          testID="empty-code"
-          label="Enter code"
-          icon="keypad-outline"
-          variant="secondary"
-          onPress={enterCode}
+        <EmptyState
+          icon="cloud-offline-outline"
+          tone="error"
+          title="Couldn't load your classes"
+          message="Check your connection and try again."
         />
-      </EmptyState>
+      </Screen>
     );
+  }
 
-  const showFooter = enrollments.length > 0;
+  if (!query.isPending && enrollments.length === 0) {
+    return (
+      <Screen
+        appBar={appBar}
+        center
+        footer={
+          <>
+            <Button
+              testID="empty-scan"
+              label="Scan QR code"
+              icon="qr-code-outline"
+              disabled={offline}
+              onPress={scan}
+            />
+            <Button
+              testID="empty-code"
+              label="Enter code"
+              icon="keypad-outline"
+              variant="secondary"
+              disabled={offline}
+              onPress={enterCode}
+            />
+          </>
+        }
+      >
+        <EmptyState
+          icon="school-outline"
+          title="Join your first class"
+          message="Scan your teacher's QR code or type the 6-digit code."
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen
+      appBar={appBar}
       scroll={false}
-      offlineBanner={false}
-      footer={
-        showFooter ? (
-          <Button
-            testID="join-class"
-            label="Join a class"
-            icon="add"
-            onPress={() => setChooser(true)}
-          />
-        ) : undefined
+      contentStyle={styles.noPad}
+      overlay={
+        <ExtendedFab
+          testID="join-class"
+          label="Join a class"
+          icon="add"
+          disabled={offline || query.isPending}
+          bottomInset={insets.bottom}
+          onPress={() => setChooser(true)}
+        />
       }
     >
       <FlatList
-        data={body ? [] : enrollments}
+        data={query.isPending ? [] : enrollments}
         keyExtractor={(e) => e.classroom.id}
         renderItem={({ item }) => <ClassCard enrollment={item} />}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 112 + insets.bottom }]}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <OfflineBanner />
-            {query.isError && enrollments.length > 0 ? (
-              <Banner tone="error" message="Couldn't refresh. Showing your last loaded classes." />
-            ) : null}
-          </View>
+          query.isError ? (
+            <Banner tone="error" message="Couldn't refresh. Showing your last loaded classes." />
+          ) : undefined
         }
-        ListEmptyComponent={body}
+        ListEmptyComponent={query.isPending ? <SkeletonCards /> : undefined}
         onEndReached={() =>
           query.hasNextPage && !query.isFetchingNextPage && void query.fetchNextPage()
         }
@@ -124,43 +180,49 @@ export function StudentClassesScreen() {
         refreshControl={
           <RefreshControl
             refreshing={query.isRefetching && !query.isFetchingNextPage}
-            onRefresh={() => void query.refetch()}
+            onRefresh={() => {
+              AccessibilityInfo.announceForAccessibility('Refreshing classrooms');
+              void query.refetch();
+            }}
             colors={[colors.primary]}
+            progressBackgroundColor={colors.surface}
           />
         }
       />
 
       <Sheet visible={chooser} onClose={() => setChooser(false)}>
-        <Text variant="heading" accessibilityRole="header">
-          Join a class
-        </Text>
-        <Button
-          label="Scan QR code"
-          icon="qr-code"
+        <SheetTitle>Join a class</SheetTitle>
+        <SheetOption
+          testID="chooser-scan"
+          icon="qr-code-outline"
+          highlighted
+          title="Scan QR code"
+          caption="Point your camera at your teacher's screen"
           onPress={() => {
             setChooser(false);
             scan();
           }}
         />
-        <Button
-          label="Enter 6-digit code"
+        <SheetOption
+          testID="chooser-code"
           icon="keypad-outline"
-          variant="secondary"
+          title="Enter code"
+          caption="Type the 6-digit code"
           onPress={() => {
             setChooser(false);
             enterCode();
           }}
         />
+        <Button label="Cancel" variant="text" onPress={() => setChooser(false)} />
       </Sheet>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { flexGrow: 1, gap: spacing.md, paddingBottom: spacing.lg },
-  header: { gap: spacing.sm },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  cardText: { flex: 1, gap: spacing.xs },
-  teacher: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  flex: { flex: 1 },
+  noPad: { paddingTop: 0, paddingHorizontal: 0, paddingBottom: 0 },
+  list: { flexGrow: 1, gap: space[3], paddingTop: space[2], paddingHorizontal: space[4] },
+  card: { flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 88 },
+  cardMain: { flex: 1, minWidth: 0, gap: 6 },
+  meta: { ...font(500, 14, 20), color: colors.ink2 },
 });

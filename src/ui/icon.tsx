@@ -5,10 +5,11 @@ import { colors } from './theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
+/** Decorative icon: the words next to it carry the meaning for screen readers. */
 export function Icon({
   name,
   size = 24,
-  color = colors.text,
+  color = colors.ink,
 }: {
   name: IconName;
   size?: number;

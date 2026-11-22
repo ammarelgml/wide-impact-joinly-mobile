@@ -1,108 +1,97 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
-import type { Classroom } from '@/api/client';
-import { formatJoinCode, formatTimeLeft } from '@/lib/format';
-import { Button, Card, Icon, IconButton, Text, colors, spacing } from '@/ui';
+import { formatTimeLeft } from '@/lib/format';
+import { CodeText, Icon, IconButton, StatusPill, Text, colors, radius, space } from '@/ui';
 
-import { inviteState } from './join-code-status';
+import type { InviteState } from './join-code-status';
 
-/** The invite card on the classroom screen (T3): code, copy, expiry and Show QR, or why joining is unavailable. */
-export function InviteCard({
-  classroom,
-  now,
-  onShowQr,
-  onRegenerate,
-  regenerating,
-}: {
-  classroom: Classroom;
-  now: number;
-  onShowQr: () => void;
-  onRegenerate: () => void;
-  regenerating: boolean;
-}) {
+/** Expiry line with a clock icon: "Expires in 18 hours". */
+export function ExpiryLine({ expiresAt, now }: { expiresAt: string; now: number }) {
+  const left = formatTimeLeft(expiresAt, now);
+  if (!left) return null;
+  return (
+    <View style={styles.expiry}>
+      <Icon name="time-outline" size={16} color={colors.ink2} />
+      <Text variant="caption">Expires in {left}</Text>
+    </View>
+  );
+}
+
+/** T3's invite card: the code with copy and expiry, dimmed when joining is closed, struck through when expired. */
+export function InviteCard({ state, now }: { state: InviteState; now: number }) {
   const [copied, setCopied] = useState(false);
-  const state = inviteState(classroom, now);
+  const code = state.joinCode?.code;
 
-  if (state.kind === 'closed') {
-    return (
-      <Card style={[styles.card, styles.dimmed]}>
-        <View style={styles.row}>
-          <Icon name="lock-closed" color={colors.textMuted} />
-          <Text variant="bodyStrong">Joining is off</Text>
-        </View>
-        <Text tone="muted">
-          Students can&apos;t join with the code or QR. Turn on joining below to let them in.
-        </Text>
-      </Card>
-    );
-  }
-
-  if (state.kind === 'expired') {
-    return (
-      <Card style={styles.card}>
-        <View style={styles.row}>
-          <Icon name="time" color={colors.warning} />
-          <Text variant="bodyStrong">The join code has expired</Text>
-        </View>
-        <Text tone="muted">Codes last 24 hours. Make a new one to invite more students.</Text>
-        <Button
-          testID="regenerate-code"
-          label="Make a new code"
-          icon="refresh"
-          loading={regenerating}
-          onPress={onRegenerate}
-        />
-      </Card>
-    );
-  }
-
-  const { joinCode } = state;
-  const timeLeft = formatTimeLeft(joinCode.expiresAt, now);
-  const copy = async () => {
-    await Clipboard.setStringAsync(joinCode.code);
+  const copy = async (value: string) => {
+    await Clipboard.setStringAsync(value);
     void Haptics.selectionAsync();
+    AccessibilityInfo.announceForAccessibility('Code copied');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <Card style={styles.card}>
-      <Text variant="label" tone="muted">
-        Join code
-      </Text>
-      <View style={styles.codeRow}>
-        <Text
-          testID="join-code"
-          variant="title"
-          style={styles.code}
-          accessibilityLabel={`Join code ${joinCode.code.split('').join(' ')}`}
-        >
-          {formatJoinCode(joinCode.code)}
+    <View testID="invite-card" style={[styles.card, state.kind === 'closed' && styles.dim]}>
+      <View style={styles.row}>
+        <Text variant="label" style={styles.grow}>
+          Invite code
         </Text>
-        <IconButton
-          icon={copied ? 'checkmark' : 'copy-outline'}
-          label={copied ? 'Code copied' : 'Copy code'}
-          color={copied ? colors.success : colors.primary}
-          onPress={() => void copy()}
-        />
+        {state.kind === 'live' ? (
+          <StatusPill kind="open" label="Joining open" />
+        ) : state.kind === 'closed' ? (
+          <StatusPill kind="closed" label="Joining closed" />
+        ) : (
+          <StatusPill kind="expired" label="Code expired" />
+        )}
       </View>
-      {timeLeft ? (
-        <Text variant="caption" tone="muted">
-          Expires in {timeLeft}
-        </Text>
-      ) : null}
-      <Button testID="show-qr" label="Show QR" icon="qr-code" onPress={onShowQr} />
-    </Card>
+
+      {state.kind === 'live' ? (
+        <>
+          <View style={styles.row}>
+            <View style={styles.grow}>
+              <CodeText testID="join-code" code={state.joinCode.code} />
+            </View>
+            <IconButton
+              testID="copy-code"
+              tonal
+              icon={copied ? 'checkmark' : 'copy-outline'}
+              label={copied ? 'Code copied' : 'Copy code'}
+              color={copied ? colors.success : colors.ink}
+              onPress={() => void copy(state.joinCode.code)}
+            />
+          </View>
+          <ExpiryLine expiresAt={state.joinCode.expiresAt} now={now} />
+        </>
+      ) : (
+        <>
+          {code ? (
+            <CodeText testID="join-code" code={code} muted struck={state.kind === 'expired'} />
+          ) : null}
+          <Text variant="caption">
+            {state.kind === 'closed'
+              ? "Joining is closed, so this code doesn't work. Turn joining on to let new students in."
+              : 'This code stopped working after 24 hours. Make a new one to keep inviting.'}
+          </Text>
+        </>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.sm },
-  dimmed: { backgroundColor: colors.surfaceMuted },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  codeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  code: { fontSize: 36, lineHeight: 44, letterSpacing: 3 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: space[4],
+    gap: space[3],
+  },
+  dim: { backgroundColor: colors.surface2, borderColor: colors.surface2 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
+  grow: { flex: 1, minWidth: 0 },
+  expiry: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
