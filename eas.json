@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://wide-impact-joinly-backend-production.up.railway.app",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "509206991044-e4h7gjbmhs98f12th7gfngjo2j3sib2o.apps.googleusercontent.com"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_DEMO_LOGIN_ENABLED": "true" }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_DEMO_LOGIN_ENABLED": "true" }
+    },
+    "production": {
+      "extends": "base",
+      "android": { "buildType": "app-bundle" },
+      "env": { "EXPO_PUBLIC_DEMO_LOGIN_ENABLED": "false" }
+    }
+  }
+}

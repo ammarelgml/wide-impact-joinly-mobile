@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - name: Generated API types match openapi/openapi.json
+        run: npm run api:check
+      - name: Android bundle builds
+        run: npx expo export --platform android --output-dir dist
+        env:
+          EXPO_PUBLIC_API_URL: https://wide-impact-joinly-backend-production.up.railway.app
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 509206991044-e4h7gjbmhs98f12th7gfngjo2j3sib2o.apps.googleusercontent.com
+          EXPO_PUBLIC_DEMO_LOGIN_ENABLED: 'true'
+
+  contract:
+    # The app's client is generated from the API's OpenAPI document. This fails if the deployed
+    # API no longer matches the copy the app was built against (run `npm run api:sync` to update).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run api:sync
+      - name: App contract matches the live API
+        run: git diff --exit-code openapi/openapi.json src/api/schema.gen.ts
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Scan full git history for secrets (gitleaks)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0 git --redact --verbose /repo
