@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { publicApi, setTokenSource, unwrap, type AuthSession, type User } from '@/api/client';
+import { api, publicApi, setTokenSource, unwrap, type AuthSession, type User } from '@/api/client';
 import { isApiError } from '@/api/errors';
 import { singleFlight } from '@/lib/single-flight';
 
@@ -116,10 +116,20 @@ export async function restoreSession(): Promise<void> {
   );
 }
 
-/** Keeps the cached profile (name, photo) in step with the API. */
-export async function updateUser(user: User): Promise<void> {
-  useSession.setState({ user });
-  await tokenStorage.saveUser(user);
+/**
+ * After a restore, refreshes the cached profile (name and photo can change at each Google
+ * sign-in) in the background. Offline is fine: the cached profile stays.
+ */
+export async function syncProfile(): Promise<void> {
+  if (useSession.getState().status !== 'signedIn') return;
+  try {
+    const user = await unwrap(api.GET('/v1/me'));
+    if (useSession.getState().status !== 'signedIn') return;
+    useSession.setState({ user });
+    await tokenStorage.saveUser(user);
+  } catch {
+    // Network errors keep the cached profile; a rejected session has already ended itself.
+  }
 }
 
 /** Signs out this device: revokes the refresh token family on the API (best effort), then clears local state. */

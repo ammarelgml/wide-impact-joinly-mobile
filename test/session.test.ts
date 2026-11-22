@@ -8,6 +8,7 @@ import {
   restoreSession,
   signOut,
   startSession,
+  syncProfile,
   useSession,
 } from '@/features/auth/session';
 
@@ -143,4 +144,16 @@ it('endSession keeps a pending join code from a deep link', async () => {
   useSession.setState({ pendingJoinCode: '246810' });
   await endSession('expired');
   expect(useSession.getState().pendingJoinCode).toBe('246810');
+});
+
+it('syncProfile refreshes the cached profile, and keeps it when offline', async () => {
+  await startSession(session());
+  fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...user, name: 'Amira H.' }));
+  await syncProfile();
+  expect(useSession.getState().user?.name).toBe('Amira H.');
+  expect(JSON.parse(store.get('joinly.user') ?? '{}').name).toBe('Amira H.');
+
+  fetchMock.mockRejectedValueOnce(new TypeError('offline'));
+  await syncProfile();
+  expect(useSession.getState()).toMatchObject({ status: 'signedIn', user: { name: 'Amira H.' } });
 });

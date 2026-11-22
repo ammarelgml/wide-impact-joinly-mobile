@@ -25,6 +25,12 @@ import {
 
 import { isJoinCode } from './join-code';
 
+/** Back where the student came from, or home when the confirm was opened straight from a QR link. */
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/student');
+}
+
 function openClass(id: string) {
   router.dismissTo('/student');
   router.push({ pathname: '/student/classes/[id]', params: { id } });
@@ -175,12 +181,7 @@ function Confirm({ code, via }: { code: string; via: JoinedVia }) {
             loading={join.isPending}
             onPress={() => join.mutate({ code, via })}
           />
-          <Button
-            label="Cancel"
-            variant="secondary"
-            disabled={join.isPending}
-            onPress={() => router.back()}
-          />
+          <Button label="Cancel" variant="secondary" disabled={join.isPending} onPress={goBack} />
         </>
       }
     >

@@ -3,6 +3,9 @@ import { Stack } from 'expo-router';
 import { ProfileButton } from '@/features/auth/profile-button';
 import { stackScreenOptions } from '@/ui';
 
+/** Deep links into this stack (for example a QR join link) still get the home screen underneath. */
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function TeacherLayout() {
   return (
     <Stack screenOptions={stackScreenOptions}>

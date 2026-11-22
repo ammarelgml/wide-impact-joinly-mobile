@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { connectQueryToAppState, createQueryClient } from '@/api/query-client';
 import { signOutOfGoogle } from '@/features/auth/google';
-import { onSessionEnded, restoreSession, useSession } from '@/features/auth/session';
+import { onSessionEnded, restoreSession, syncProfile, useSession } from '@/features/auth/session';
 import { connectQueryToNetwork } from '@/lib/network';
 import { stackScreenOptions } from '@/ui';
 
@@ -19,7 +19,7 @@ export default function RootLayout() {
   const role = useSession((s) => s.user?.role);
 
   useEffect(() => {
-    void restoreSession();
+    void restoreSession().then(syncProfile);
     const disconnectNetwork = connectQueryToNetwork();
     const disconnectAppState = connectQueryToAppState();
     return () => {

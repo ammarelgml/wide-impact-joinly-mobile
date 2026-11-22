@@ -23,7 +23,7 @@ export default function JoinLink() {
   }, [valid, status]);
 
   if (!valid) return <Redirect href="/" />;
-  if (status === 'signedOut') return null;
+  if (status !== 'signedIn') return null;
   if (role === 'student') {
     return (
       <Redirect href={{ pathname: '/student/join/confirm', params: { code: valid, via: 'qr' } }} />

@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -6,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Role } from '@/api/client';
 import { errorMessage } from '@/api/messages';
 import { config } from '@/lib/config';
-import { Banner, Button, Icon, Screen, Sheet, Text, colors, radius, spacing } from '@/ui';
+import { Banner, Button, Screen, Sheet, Text, spacing } from '@/ui';
 
 import { signInAsDemo, signInWithGoogle } from './auth-service';
 import { GoogleSignInError } from './google';
@@ -70,9 +71,12 @@ export function WelcomeScreen() {
       }
     >
       <View style={styles.hero}>
-        <View style={styles.mark}>
-          <Icon name="people" size={44} color={colors.onPrimary} />
-        </View>
+        <Image
+          source={require('../../../assets/splash-icon.png')}
+          style={styles.mark}
+          accessibilityIgnoresInvertColors
+          accessible={false}
+        />
         <Text variant="display" align="center" accessibilityRole="header">
           Joinly
         </Text>
@@ -129,15 +133,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingTop: spacing.xxxl,
   },
-  mark: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
+  mark: { width: 88, height: 88, marginBottom: spacing.sm },
   tagline: { maxWidth: 320 },
   messages: { gap: spacing.sm },
 });
