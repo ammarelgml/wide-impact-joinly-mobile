@@ -16,6 +16,21 @@ REST API, database and API documentation live in
 | Development approach     | [docs/approach.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/approach.md) (both repos)                                                           |
 | AI usage disclosure      | [docs/ai-usage.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/ai-usage.md) (both repos)                                                           |
 
+## Demo videos
+
+Recorded on an Android emulator with the release APK against the hosted API, for a look at the app
+without installing it:
+
+- [Teacher flow](https://github.com/ammarelgml/wide-impact-joinly-mobile/releases/download/v1.0.0/joinly-teacher-flow.mp4)
+  (2:56): demo sign-in, create a classroom, full-screen QR and code, share the QR image or the link,
+  regenerate the code, close and reopen joining, roster.
+- [Student flow](https://github.com/ammarelgml/wide-impact-joinly-mobile/releases/download/v1.0.0/joinly-student-flow.mp4)
+  (2:11): the QR link on a phone without the app, the same link opening Joinly, demo sign-in, join a
+  class, "already in this class", the scanner, leave.
+
+Google sign-in works for any Google account; the **Teacher demo** and **Student demo** buttons are
+there for faster checks.
+
 ## Overview
 
 | Teacher                                                                               | Student                                                                     |
