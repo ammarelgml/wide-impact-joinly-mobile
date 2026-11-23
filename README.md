@@ -13,8 +13,8 @@ REST API, database and API documentation live in
 | Android APK              | [Latest release](https://github.com/ammarelgml/wide-impact-joinly-mobile/releases/latest)                                                                                      |
 | Hosted API (used by APK) | https://wide-impact-joinly-backend-production.up.railway.app                                                                                                                   |
 | API documentation        | [Swagger UI](https://wide-impact-joinly-backend-production.up.railway.app/docs), [docs/api.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/api.md) |
-| Development approach     | [docs/approach.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/approach.md) (both repos)                                                           |
-| AI usage disclosure      | [docs/ai-usage.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/ai-usage.md) (both repos)                                                           |
+| Development approach     | [docs/approach.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/approach.md) (backend repo)                                                         |
+| AI usage disclosure      | [docs/ai-usage.md](https://github.com/ammarelgml/wide-impact-joinly-backend/blob/main/docs/ai-usage.md) (backend repo)                                                         |
 
 ## Demo videos
 
