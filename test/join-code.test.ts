@@ -14,6 +14,13 @@ describe('parseJoinUrl', () => {
     expect(parseJoinUrl('joinly://join?utm=x&code=482913')).toBe('482913');
   });
 
+  it('reads the code from an https invite link on the API host', () => {
+    // jest.setup sets EXPO_PUBLIC_API_URL to https://api.test.
+    expect(parseJoinUrl('https://api.test/join?code=482913')).toBe('482913');
+    expect(parseJoinUrl('https://API.test/join/?code=482913')).toBe('482913');
+    expect(parseJoinUrl('https://host.example/join?code=482913', 'host.example')).toBe('482913');
+  });
+
   it('round-trips with buildJoinUrl', () => {
     expect(parseJoinUrl(buildJoinUrl('246810'))).toBe('246810');
   });
@@ -21,7 +28,14 @@ describe('parseJoinUrl', () => {
   it.each([
     ['empty', ''],
     ['plain code', '482913'],
-    ['web link', 'https://joinly.app/join?code=482913'],
+    ['web link on another host', 'https://joinly.app/join?code=482913'],
+    ['http link', 'http://api.test/join?code=482913'],
+    ['api host as subdomain', 'https://api.test.evil.com/join?code=482913'],
+    ['userinfo trick', 'https://api.test@evil.com/join?code=482913'],
+    ['port', 'https://api.test:8443/join?code=482913'],
+    ['other path', 'https://api.test/joinx?code=482913'],
+    ['nested path', 'https://api.test/v1/join?code=482913'],
+    ['web two codes', 'https://api.test/join?code=111111&code=222222'],
     ['other scheme', 'otherapp://join?code=482913'],
     ['scheme prefix trick', 'evil-joinly://join?code=482913'],
     ['other host', 'joinly://classes?code=482913'],

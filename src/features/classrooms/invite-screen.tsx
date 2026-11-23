@@ -3,13 +3,12 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Platform, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Classroom } from '@/api/client';
 import { errorMessage } from '@/api/messages';
-import { formatJoinCode } from '@/lib/format';
 import { useIsOffline } from '@/lib/network';
 import { useNow } from '@/lib/use-now';
 import {
@@ -39,6 +38,7 @@ import { INVITE_POLL_MS, useClassroom, useRegenerateCode, useUpdateClassroom } f
 import { ExpiryLine } from './invite-card';
 import { REGENERATE_MESSAGE, REGENERATE_TITLE, inviteState } from './join-code-status';
 import { LiveCounter } from './live-counter';
+import { useShareInvite } from './share-invite';
 
 /**
  * While the invite is on screen: keep it awake, raise brightness to full so the QR reads from the
@@ -145,10 +145,12 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
   const regenerating = regenerate.isPending;
 
   const qrLabel = `QR code to join ${classroom.name}`;
-  const share = (code: string, url: string) =>
-    void Share.share({
-      message: `Join "${classroom.name}" on Joinly with code ${formatJoinCode(code)}, or open ${url}`,
-    });
+  const live = state.kind === 'live' ? state.joinCode : null;
+  const share = useShareInvite({
+    name: classroom.name,
+    code: live?.code ?? '',
+    url: live?.joinUrl ?? '',
+  });
 
   const joiningSwitch = (bare: boolean) => (
     <SwitchRow
@@ -171,7 +173,7 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
           icon="share-social-outline"
           style={styles.grow}
           disabled={regenerating}
-          onPress={() => share(state.joinCode.code, state.joinCode.joinUrl)}
+          onPress={share.open}
         />
         <Button
           testID="invite-regenerate"
@@ -273,6 +275,8 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
           {actions}
         </View>
         {confirm}
+        {live && !regenerating ? share.ui : null}
+        {live && !regenerating ? share.ui : null}
       </View>
     );
   }
@@ -354,6 +358,7 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
       )}
       {errors}
       {confirm}
+      {live && !regenerating ? share.ui : null}
     </Screen>
   );
 }

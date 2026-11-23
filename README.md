@@ -22,7 +22,7 @@ REST API, database and API documentation live in
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Sign in with Google, choose "Teacher" once                                            | Sign in with Google, choose "Student" once                                  |
 | Create, edit and delete classrooms                                                    | Join by scanning the QR code (in-app scanner or the phone's camera app)     |
-| Show a classroom's 6-digit code and a full-screen QR, share or copy it                | Join by typing the 6-digit code (paste supported, submits on the 6th digit) |
+| Show a classroom's 6-digit code and a full-screen QR, share the QR image or the link  | Join by typing the 6-digit code (paste supported, submits on the 6th digit) |
 | Watch students appear live on the invite screen (screen stays awake, full brightness) | See the class (name, teacher, student count) before confirming              |
 | Open or close joining, make a new code (the old code and QR stop working)             | See joined classes, leave a class                                           |
 | See the roster, remove a student (then optionally make a new code)                    |                                                                             |
@@ -32,20 +32,20 @@ shown on the screen where they happen, in one sentence that says what to do next
 
 ## Technologies
 
-| Concern           | Choice                                                                                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework         | Expo SDK 58, React Native 0.88, React 19, TypeScript (strict, `noUncheckedIndexedAccess`)                                                            |
-| Navigation        | Expo Router (file-based), role routing with `Stack.Protected` guards, deep link `joinly://join?code=…`                                               |
-| Server state      | TanStack Query (caching, pull to refresh, optimistic updates, polling while a live screen is open)                                                   |
-| Client state      | zustand, for the session only                                                                                                                        |
-| API client        | `openapi-fetch` typed by `openapi-typescript`, generated from the API's OpenAPI 3.1 document                                                         |
-| Forms             | react-hook-form + zod (same limits as the API, checked by a test)                                                                                    |
-| Auth              | `@react-native-google-signin/google-signin` (native Google sign-in), `expo-secure-store` (Keystore)                                                  |
-| QR                | `react-native-qrcode-svg` (show), `expo-camera` `CameraView` (scan)                                                                                  |
-| UI                | Own components built from the Joinly design handoff: its tokens (`src/ui/theme.ts`), Inter via `@expo-google-fonts/inter`, Ionicons                  |
-| Device            | `expo-keep-awake`, `expo-brightness`, `expo-screen-orientation` (invite screen), `expo-haptics`, `expo-clipboard`, `@react-native-community/netinfo` |
-| Tests and quality | Jest (`jest-expo`), React Native Testing Library, ESLint (`eslint-config-expo`), Prettier, GitHub Actions                                            |
-| Builds            | EAS Build (`preview` profile produces the APK)                                                                                                       |
+| Concern           | Choice                                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework         | Expo SDK 58, React Native 0.88, React 19, TypeScript (strict, `noUncheckedIndexedAccess`)                                                               |
+| Navigation        | Expo Router (file-based), role routing with `Stack.Protected` guards, Android App Link `https://<api>/join?code=…` (plus legacy `joinly://join?code=…`) |
+| Server state      | TanStack Query (caching, pull to refresh, optimistic updates, polling while a live screen is open)                                                      |
+| Client state      | zustand, for the session only                                                                                                                           |
+| API client        | `openapi-fetch` typed by `openapi-typescript`, generated from the API's OpenAPI 3.1 document                                                            |
+| Forms             | react-hook-form + zod (same limits as the API, checked by a test)                                                                                       |
+| Auth              | `@react-native-google-signin/google-signin` (native Google sign-in), `expo-secure-store` (Keystore)                                                     |
+| QR                | `react-native-qrcode-svg` (show), `expo-camera` `CameraView` (scan)                                                                                     |
+| UI                | Own components built from the Joinly design handoff: its tokens (`src/ui/theme.ts`), Inter via `@expo-google-fonts/inter`, Ionicons                     |
+| Device            | `expo-keep-awake`, `expo-brightness`, `expo-screen-orientation` (invite screen), `expo-haptics`, `expo-clipboard`, `@react-native-community/netinfo`    |
+| Tests and quality | Jest (`jest-expo`), React Native Testing Library, ESLint (`eslint-config-expo`), Prettier, GitHub Actions                                               |
+| Builds            | EAS Build (`preview` profile produces the APK)                                                                                                          |
 
 ## Architecture
 
@@ -53,7 +53,7 @@ shown on the screen where they happen, in one sentence that says what to do next
 src/
   app/                    Routes only (Expo Router). Each file re-exports a screen from features/.
     _layout.tsx           Providers, session restore, role guards
-    join.tsx              Deep link target for joinly://join?code=…
+    join.tsx              Invite link target (https://<api>/join?code=… and joinly://join?code=…)
     teacher/              Teacher stack: classrooms, classroom, invite, create/edit
     student/              Student stack: classes, scan, enter code, confirm, class
   api/
@@ -88,8 +88,12 @@ requests share that single refresh, because the API treats a reused refresh toke
 revokes the session. A rejected refresh token signs the user out with "Please sign in again".
 The saved session is restored without a network call, so the app opens instantly and offline.
 
-**Joining.** A QR encodes `joinly://join?code=482913`. Scanned data is untrusted, so
-`parseJoinUrl` accepts only that exact scheme and host with one 6-digit code (unit-tested against
+**Joining.** A QR encodes `https://<api host>/join?code=482913`. Android opens it in Joinly through a
+verified App Link (`autoVerify` intent filter in `app.json`; the API serves
+`/.well-known/assetlinks.json` with the signing certificate). On a phone without the app, the camera
+opens the API's small web page with the code, a download link and an "Open in Joinly" button. Older
+QRs with `joinly://join?code=…` still work. Scanned data is untrusted, so `parseJoinUrl` accepts only
+those two forms, https only on the API's own host, with one 6-digit code (unit-tested against
 hostile input). A scanned QR, a link opened by the phone's camera app, and a typed code all reach the
 same preview call, then the same join call. A link opened while signed out is kept through sign-in
 and role choice, then lands on the join confirm.
@@ -206,7 +210,8 @@ code **`246810`** (valid 30 days), so the demo student can test joining on one d
 
 1. Phone A: sign in as a teacher (or **Teacher demo**), open a classroom, tap **Show QR code**.
 2. Phone B: sign in as a student, tap **Join a class**, then **Scan QR code**, and point it at
-   phone A. You can also scan with the phone's own camera app, which opens the link in Joinly.
+   phone A. You can also scan with the phone's own camera app, which opens the link in Joinly
+   (on a phone without the app it opens a web page with the code and a download link).
 3. Tap **Join class** on phone B. Phone A's "students joined" counter updates within 2 seconds.
 
 **QR code, one device:** scan this QR (code `246810`) from another screen or a printout:
@@ -215,6 +220,8 @@ code **`246810`** (valid 30 days), so the demo student can test joining on one d
 
 **Edge cases worth trying**
 
+- Teacher taps **Share** on the invite screen: **Share QR image** sends a picture of the QR with
+  the class name and code (WhatsApp or any app); **Share code and link** sends text.
 - Teacher taps **Regenerate** on the invite screen: the old code and QR stop working at once.
 - Teacher turns **Joining open** off: the invite hides the QR and code, and students see
   "Joining is closed".
@@ -233,10 +240,10 @@ code **`246810`** (valid 30 days), so the demo student can test joining on one d
 - **Live updates use polling** (every 2 s on the invite screen, every 5 s on the classroom screen,
   only while that screen is open), not push or WebSockets. Other screens refresh on focus and pull
   to refresh.
-- **The QR only works on a phone with Joinly installed.** It encodes `joinly://join?code=…`, a
-  link only the app understands, so a phone without the app (and any iPhone, since there is no iOS
-  build) reports no usable data. The fix is an `https://` link with a web fallback page that sends
-  people to the app download, which needs a hosted page and Android App Links verification.
+- **Without the app, the QR opens a web page, not a join.** A phone without Joinly (including any
+  iPhone, since there is no iOS build) sees the code and a link to download the Android APK. App
+  Links verification covers the EAS signing key; a Play Store release would add Play's signing key
+  to `assetlinks.json`.
 - **No offline writes.** Reading cached data works offline; creating, joining and leaving need a
   connection.
 - **Role is permanent.** An account is a teacher or a student, chosen once; changing it is an admin
