@@ -47,7 +47,13 @@ describe('errorMessage', () => {
     expect(errorMessage(err('JOIN_CODE_INVALID'))).toMatch(/doesn't match a class/);
     expect(errorMessage(err('JOINING_CLOSED'))).toMatch(/isn't accepting new students/);
     expect(errorMessage(err('RATE_LIMITED', { retryAfterSeconds: 75 }))).toBe(
-      'Too many tries. You can try again in 1:15.',
+      'Too many tries. You can try again in 2 minutes.',
+    );
+    expect(errorMessage(err('RATE_LIMITED', { retryAfterSeconds: 3120 }))).toBe(
+      'Too many tries. You can try again in 52 minutes.',
+    );
+    expect(errorMessage(err('RATE_LIMITED', { retryAfterSeconds: 45 }))).toBe(
+      'Too many tries. You can try again in 45 seconds.',
     );
   });
 

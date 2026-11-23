@@ -11,7 +11,7 @@ export function errorMessage(error: unknown): string {
       return "Can't reach Joinly. Check your connection and try again.";
     case 'RATE_LIMITED':
       return error.retryAfterSeconds
-        ? `Too many tries. You can try again in ${formatWait(error.retryAfterSeconds)}.`
+        ? `Too many tries. You can try again in ${formatRetryAfter(error.retryAfterSeconds)}.`
         : 'Too many tries. Wait a moment and try again.';
     case 'JOIN_CODE_INVALID':
       return "That code doesn't match a class. Check the digits and try again.";
@@ -46,4 +46,16 @@ export function formatWait(seconds: number): string {
   const minutes = Math.floor(s / 60);
   const rest = s % 60;
   return `${minutes}:${String(rest).padStart(2, '0')}`;
+}
+
+/**
+ * Wait in words for a one-off message: "45 seconds", "1 minute", "52 minutes". Limits on creating
+ * or regenerating can run to an hour, where a m:ss clock would read oddly; the code-entry lock keeps
+ * its live m:ss countdown (formatWait).
+ */
+export function formatRetryAfter(seconds: number): string {
+  const s = Math.max(1, Math.ceil(seconds));
+  if (s < 60) return `${s} ${s === 1 ? 'second' : 'seconds'}`;
+  const minutes = Math.ceil(s / 60);
+  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
 }

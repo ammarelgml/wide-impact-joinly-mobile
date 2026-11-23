@@ -131,7 +131,7 @@ export interface paths {
      * Create a classroom
      * @description Role: teacher.
      *
-     *     The classroom is created with its first join code.
+     *     The classroom is created with its first join code. Limited to 30 new classrooms or codes per hour per account.
      */
     post: operations['createClassroom'];
     delete?: never;
@@ -191,7 +191,7 @@ export interface paths {
      * Regenerate the join code
      * @description Role: teacher.
      *
-     *     Revokes the current code (and its QR) immediately and issues a new one.
+     *     Revokes the current code (and its QR) immediately and issues a new one. Shares the 30 per hour limit with creating classrooms.
      */
     post: operations['regenerateJoinCode'];
     delete?: never;
@@ -921,6 +921,16 @@ export interface operations {
           'application/problem+json': components['schemas']['Problem'];
         };
       };
+      /** @description Error. `code` is one of: `RATE_LIMITED` */
+      429: {
+        headers: {
+          'Retry-After'?: number;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['Problem'];
+        };
+      };
       /** @description Error. `code` is one of: `INTERNAL` */
       500: {
         headers: {
@@ -1252,6 +1262,16 @@ export interface operations {
       /** @description Error. `code` is one of: `NOT_FOUND` */
       404: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['Problem'];
+        };
+      };
+      /** @description Error. `code` is one of: `RATE_LIMITED` */
+      429: {
+        headers: {
+          'Retry-After'?: number;
           [name: string]: unknown;
         };
         content: {

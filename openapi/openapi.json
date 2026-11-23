@@ -481,7 +481,7 @@
           "Classrooms"
         ],
         "summary": "Create a classroom",
-        "description": "Role: teacher.\n\nThe classroom is created with its first join code.",
+        "description": "Role: teacher.\n\nThe classroom is created with its first join code. Limited to 30 new classrooms or codes per hour per account.",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -530,6 +530,23 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. `code` is one of: `RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
                 }
               }
             }
@@ -887,7 +904,7 @@
           "Classrooms"
         ],
         "summary": "Regenerate the join code",
-        "description": "Role: teacher.\n\nRevokes the current code (and its QR) immediately and issues a new one.",
+        "description": "Role: teacher.\n\nRevokes the current code (and its QR) immediately and issues a new one. Shares the 30 per hour limit with creating classrooms.",
         "parameters": [
           {
             "name": "id",
@@ -947,6 +964,23 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. `code` is one of: `RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
                 }
               }
             }
