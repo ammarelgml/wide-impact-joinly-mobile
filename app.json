@@ -51,7 +51,8 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "./plugins/with-android-config-changes"
     ],
     "extra": {
       "router": {

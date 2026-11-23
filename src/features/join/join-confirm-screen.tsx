@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
+import { BackHandler } from 'react-native';
 
 import type { JoinedVia } from '@/api/client';
 import { isApiError } from '@/api/errors';
@@ -40,6 +41,17 @@ export function JoinConfirmScreen() {
   useEffect(() => {
     if (pendingJoinCode) setPendingJoinCode(null);
   }, [pendingJoinCode]);
+
+  // Opened cold from a QR link there is nothing behind this screen, so Android's back button would
+  // close the app. Send it home instead, like the close button.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (router.canGoBack()) return false;
+      goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!code) {
     return (

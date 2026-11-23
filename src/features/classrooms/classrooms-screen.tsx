@@ -108,6 +108,19 @@ export function ClassroomsScreen() {
     );
   }
 
+  // Opened offline with nothing cached: the query is paused, not loading, so skeletons would never end.
+  if (query.isPending && query.fetchStatus === 'paused') {
+    return (
+      <Screen appBar={appBar} center offline={false}>
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="You're offline"
+          message="Connect to the internet to see your classrooms."
+        />
+      </Screen>
+    );
+  }
+
   if (!query.isPending && classrooms.length === 0) {
     return (
       <Screen
