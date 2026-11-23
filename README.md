@@ -31,6 +31,23 @@ without installing it:
 Google sign-in works for any Google account; the **Teacher demo** and **Student demo** buttons are
 there for faster checks.
 
+## Design files
+
+The UI was designed before the build, and the design handoff is in [`docs/design/`](docs/design):
+
+- [`design-brief.md`](docs/design/design-brief.md): the brief the design was made from.
+- [`spec/joinly-handoff-spec.md`](docs/design/spec/joinly-handoff-spec.md): tokens, components, every
+  screen and state, accessibility and copy.
+- [`screens/`](docs/design/screens): one PNG per screen state (teacher T1 to T5, student P1 to P6,
+  sign-in S1 to S4, global states), plus full boards in [`screens/_boards/`](docs/design/screens/_boards).
+- [`code/theme.ts`](docs/design/code/theme.ts) and [`tokens/`](docs/design/tokens): the design tokens
+  that `src/ui/theme.ts` is built from. [`canvas-source/`](docs/design/canvas-source) is the design
+  canvas source, for reference only.
+
+The app follows the design with the differences listed under [Known limitations](#known-limitations):
+light theme and English only. The QR now encodes an https link instead of the `joinly://` link the
+design shows, so it also works on phones without the app.
+
 ## Overview
 
 | Teacher                                                                               | Student                                                                     |

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>P6 Joined</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="/_blob/0c0725a1e3239abcc093709bc8908fb6">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="board jl {{themeClass}}" style="width: 848px; height: 1100px; box-sizing: border-box">
+<header class="bhdr"><span class="bid">P6</span><div><h1 class="btitle">Joined</h1><p class="bdesc">Recommended: the success screen for about 1.5 s, then P5 automatically (Continue skips the wait). Alternative if the team prefers fewer screens: go straight to P5 with a snackbar.</p></div></header>
+<div class="frames">
+<section class="st"><div class="stl"><h2>Success moment</h2><p>Haptic success; auto-continues to P5.</p></div><div class="screen surface" dir="{{dir}}"><div class="content center" style="gap: 12px"><span class="eicon ok" style="width: 96px; height: 96px; border-radius: 32px"><svg class="ic" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span><h1 class="t-display">You’re in</h1><p class="t-sub">Physics 101 — Section A</p><p class="t-body2">Sara Mansour’s class</p></div><div class="bottom"><button class="btn btn-primary"><span>Continue</span></button></div></div></section>
+<section class="st"><div class="stl"><h2>Alternative: transition</h2><p>P5 opens with a confirmation snackbar.</p></div><div class="screen " dir="{{dir}}"><div class="appbar"><button class="ib " aria-label="Back"><svg class="ic rtl-flip" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button><h1 class="t">Class</h1></div><div class="content "><div class="card" style="display: flex; flex-direction: column; gap: 16px; padding: 20px"><div><h2 class="t-title">Physics 101 — Section A</h2><p class="t-body2" style="margin-top: 8px">Mechanics and waves. Bring a calculator on Tuesdays.</p></div><div style="height: 1px; background: var(--c-line)"></div><div class="hrow" style="gap: 12px"><span class="av">SM</span><div class="grow"><p class="t-label">Sara Mansour</p><p class="t-cap">Teacher</p></div></div><div class="meta"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Joined just now</span><span class="sep-dot"></span><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0112 0v1M16 4.1a4 4 0 010 7.8M22 21v-1a6 6 0 00-4-5.6"/></svg><span>28 students</span></div></div></div><div class="bottom"><button class="btn btn-danger-text"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>Leave class</span></button></div><div class="toast" role="status" style="bottom: 108px"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg><span class="grow">You joined Physics 101 — Section A</span></div></div></section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Theme"},"rtl":{"editor":"boolean","default":false,"section":"Theme"},"$preview":{"width":848,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themeClass: this.props.dark ? 'theme-dark' : '', dir: this.props.rtl ? 'rtl' : 'ltr' };
+  }
+}
+</script>
+</body>
+</html>

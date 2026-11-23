@@ -1,0 +1,265 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-22T21:26:53Z"
+ },
+ "title": "Joinly — mobile app design",
+ "launch": {
+  "view": "canvas",
+  "page": "ds"
+ },
+ "pages": [
+  {
+   "id": "ds",
+   "name": "Design system"
+  },
+  {
+   "id": "shared",
+   "name": "Shared"
+  },
+  {
+   "id": "teacher",
+   "name": "Teacher"
+  },
+  {
+   "id": "student",
+   "name": "Student"
+  },
+  {
+   "id": "rtl",
+   "name": "Arabic (RTL)"
+  },
+  {
+   "id": "proto",
+   "name": "Prototype"
+  }
+ ],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 2580,
+   "title": "Foundations",
+   "page": "ds"
+  },
+  "Components.dc.html": {
+   "x": 0,
+   "y": 2700,
+   "w": 1440,
+   "h": 2900,
+   "title": "Core components",
+   "page": "ds"
+  },
+  "S1-S2-Welcome.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 2416,
+   "h": 1100,
+   "title": "S1–S2 Launch and sign in",
+   "page": "shared"
+  },
+  "S3-Role.dc.html": {
+   "x": 0,
+   "y": 1220,
+   "w": 1632,
+   "h": 1100,
+   "title": "S3 Choose your role",
+   "page": "shared"
+  },
+  "S4-Profile.dc.html": {
+   "x": 0,
+   "y": 2440,
+   "w": 848,
+   "h": 1100,
+   "title": "S4 Profile sheet",
+   "page": "shared"
+  },
+  "G-Global.dc.html": {
+   "x": 0,
+   "y": 3660,
+   "w": 1240,
+   "h": 1100,
+   "title": "Global states",
+   "page": "shared"
+  },
+  "T1-Classrooms.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 2416,
+   "h": 1100,
+   "title": "T1 My classrooms (teacher)",
+   "page": "teacher"
+  },
+  "T2-ClassroomForm.dc.html": {
+   "x": 0,
+   "y": 1220,
+   "w": 2808,
+   "h": 1100,
+   "title": "T2 New or edit classroom",
+   "page": "teacher"
+  },
+  "T3-Classroom.dc.html": {
+   "x": 0,
+   "y": 2440,
+   "w": 2808,
+   "h": 1100,
+   "title": "T3 Classroom (teacher)",
+   "page": "teacher"
+  },
+  "T4-Invite.dc.html": {
+   "x": 0,
+   "y": 3660,
+   "w": 2464,
+   "h": 1100,
+   "title": "T4 Invite (full screen)",
+   "page": "teacher"
+  },
+  "T5-Confirm.dc.html": {
+   "x": 0,
+   "y": 4880,
+   "w": 2416,
+   "h": 1100,
+   "title": "T5 Confirm dialogs",
+   "page": "teacher"
+  },
+  "P1-Classrooms.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 2416,
+   "h": 1100,
+   "title": "P1 My classrooms (student)",
+   "page": "student"
+  },
+  "P2-ScanQR.dc.html": {
+   "x": 0,
+   "y": 1220,
+   "w": 2024,
+   "h": 1100,
+   "title": "P2 Scan QR",
+   "page": "student"
+  },
+  "P3-EnterCode.dc.html": {
+   "x": 0,
+   "y": 2440,
+   "w": 2416,
+   "h": 1100,
+   "title": "P3 Enter code",
+   "page": "student"
+  },
+  "P4-JoinConfirm.dc.html": {
+   "x": 0,
+   "y": 3660,
+   "w": 2416,
+   "h": 1100,
+   "title": "P4 Join confirm",
+   "page": "student"
+  },
+  "P5-Classroom.dc.html": {
+   "x": 0,
+   "y": 4880,
+   "w": 2024,
+   "h": 1100,
+   "title": "P5 Classroom (student)",
+   "page": "student"
+  },
+  "P6-Joined.dc.html": {
+   "x": 0,
+   "y": 6100,
+   "w": 848,
+   "h": 1100,
+   "title": "P6 Joined",
+   "page": "student"
+  },
+  "AR-RTL.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 2416,
+   "h": 1100,
+   "title": "Arabic (RTL) check",
+   "page": "rtl"
+  },
+  "Proto-StudentJoin.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 900,
+   "h": 1060,
+   "title": "Student join flow — prototype",
+   "page": "proto",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Components.dc.html",
+  "S1-S2-Welcome.dc.html",
+  "S3-Role.dc.html",
+  "S4-Profile.dc.html",
+  "G-Global.dc.html",
+  "T1-Classrooms.dc.html",
+  "T2-ClassroomForm.dc.html",
+  "T3-Classroom.dc.html",
+  "T4-Invite.dc.html",
+  "T5-Confirm.dc.html",
+  "P1-Classrooms.dc.html",
+  "P2-ScanQR.dc.html",
+  "P3-EnterCode.dc.html",
+  "P4-JoinConfirm.dc.html",
+  "P5-Classroom.dc.html",
+  "P6-Joined.dc.html",
+  "AR-RTL.dc.html",
+  "Proto-StudentJoin.dc.html"
+ ],
+ "notes": {
+  "title-ds": {
+   "x": 0,
+   "y": -300,
+   "text": "Design system",
+   "kind": "title1",
+   "maxW": 1440,
+   "page": "ds"
+  },
+  "title-shared": {
+   "x": 0,
+   "y": -300,
+   "text": "Shared — S1 to S4 and global states",
+   "kind": "title1",
+   "maxW": 2416,
+   "page": "shared"
+  },
+  "title-teacher": {
+   "x": 0,
+   "y": -300,
+   "text": "Teacher — T1 to T5",
+   "kind": "title1",
+   "maxW": 2808,
+   "page": "teacher"
+  },
+  "title-student": {
+   "x": 0,
+   "y": -300,
+   "text": "Student — P1 to P6",
+   "kind": "title1",
+   "maxW": 2416,
+   "page": "student"
+  },
+  "title-rtl": {
+   "x": 0,
+   "y": -300,
+   "text": "Arabic (RTL)",
+   "kind": "title1",
+   "maxW": 2416,
+   "page": "rtl"
+  },
+  "title-proto": {
+   "x": 0,
+   "y": -300,
+   "text": "Prototype",
+   "kind": "title1",
+   "maxW": 900,
+   "page": "proto"
+  }
+ },
+ "designSystems": []
+}
