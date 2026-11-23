@@ -62,11 +62,13 @@ export function useJoin() {
   return useMutation({
     mutationFn: (input: { code: string; via: JoinedVia }) =>
       unwrap(api.POST('/v1/enrollments', { body: input })),
-    onSuccess: (_enrollment, input) => {
-      queryClient.setQueryData<ClassroomPreview>(
-        queryKeys.enrollments.preview(input.code),
-        (preview) => (preview ? { ...preview, alreadyMember: true } : preview),
-      );
+    onSuccess: (enrollment, input) => {
+      // The join response carries the class with its new student count, so a repeat lookup of
+      // the same code shows the right size instead of the count from before this student joined.
+      queryClient.setQueryData<ClassroomPreview>(queryKeys.enrollments.preview(input.code), {
+        classroom: enrollment.classroom,
+        alreadyMember: true,
+      });
       void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.list() });
     },
   });

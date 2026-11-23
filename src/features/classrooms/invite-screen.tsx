@@ -334,7 +334,7 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
           {state.joinCode ? (
             <CodeText code={state.joinCode.code} size="XL" struck testID="invite-code" />
           ) : null}
-          <StatusPill kind="expired" label="Code expired" />
+          <StatusPill kind="expired" label="Code expired" style={styles.centered} />
           <Text variant="caption" align="center" style={styles.note}>
             Students can&apos;t join until you make a new code.
           </Text>
@@ -342,13 +342,13 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
       ) : (
         <>
           <QrOff plate={plate}>
-            <Icon name="lock-closed-outline" size={40} color={colors.ink2} />
+            <Icon name="eye-off-outline" size={40} color={colors.ink2} />
             <Text style={styles.qrOffText}>QR hidden while joining is closed</Text>
           </QrOff>
           <Text variant="codeXL" style={{ color: colors.ink2 }} accessibilityLabel="Code hidden">
             ••• •••
           </Text>
-          <StatusPill kind="closed" label="Joining closed" />
+          <StatusPill kind="closed" label="Joining closed" style={styles.centered} />
           <LiveCounter count={classroom.studentCount} live={false} />
         </>
       )}
@@ -361,6 +361,7 @@ function InviteContent({ classroom }: { classroom: Classroom }) {
 const styles = StyleSheet.create({
   portrait: { alignItems: 'center', paddingTop: 0 },
   name: { maxWidth: '100%' },
+  centered: { alignSelf: 'center' },
   qr: {
     backgroundColor: qr.plate,
     borderRadius: radius.lg,

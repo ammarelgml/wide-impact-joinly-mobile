@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon, type IconName } from './icon';
 import { Text } from './text';
@@ -21,6 +21,7 @@ export function StatusPill({
   label,
   icon,
   live = false,
+  style,
 }: {
   kind: PillKind;
   label: string;
@@ -28,11 +29,13 @@ export function StatusPill({
   icon?: IconName;
   /** The open dot pulses on live screens. */
   live?: boolean;
+  /** E.g. alignSelf center on a centred screen; the pill hugs the start edge by default. */
+  style?: StyleProp<ViewStyle>;
 }) {
   const look = looks[kind];
   const iconName = icon ?? look.icon;
   return (
-    <View style={[styles.pill, { backgroundColor: look.bg }]}>
+    <View style={[styles.pill, { backgroundColor: look.bg }, style]}>
       {kind === 'open' ? (
         <Dot color={look.fg} pulse={live} />
       ) : iconName ? (
