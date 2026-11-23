@@ -233,6 +233,10 @@ code **`246810`** (valid 30 days), so the demo student can test joining on one d
 - **Live updates use polling** (every 2 s on the invite screen, every 5 s on the classroom screen,
   only while that screen is open), not push or WebSockets. Other screens refresh on focus and pull
   to refresh.
+- **The QR only works on a phone with Joinly installed.** It encodes `joinly://join?code=…`, a
+  link only the app understands, so a phone without the app (and any iPhone, since there is no iOS
+  build) reports no usable data. The fix is an `https://` link with a web fallback page that sends
+  people to the app download, which needs a hosted page and Android App Links verification.
 - **No offline writes.** Reading cached data works offline; creating, joining and leaving need a
   connection.
 - **Role is permanent.** An account is a teacher or a student, chosen once; changing it is an admin
