@@ -244,6 +244,10 @@ code **`246810`** (valid 30 days), so the demo student can test joining on one d
   iPhone, since there is no iOS build) sees the code and a link to download the Android APK. App
   Links verification covers the EAS signing key; a Play Store release would add Play's signing key
   to `assetlinks.json`.
+- **Changing the system font size in the first seconds after installing or updating the app** can
+  restart the app's JavaScript root before navigation is ready, and the next tap may close the app
+  (an expo-router issue with Android re-creating the root). Font size, display size and language
+  changes at any other time are handled in place (`plugins/with-android-config-changes.js`).
 - **No offline writes.** Reading cached data works offline; creating, joining and leaving need a
   connection.
 - **Role is permanent.** An account is a teacher or a student, chosen once; changing it is an admin
